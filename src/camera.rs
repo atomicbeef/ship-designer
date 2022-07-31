@@ -48,18 +48,20 @@ fn camera_rotate(
     settings: Res<Settings>,
     mut query: Query<&mut Transform, With<FreeCamera>>
 ) {
-    let window = windows.get_primary().unwrap();
-    for mut transform in query.iter_mut() {
-        for ev in motion_evr.iter() {
-            if window.cursor_locked() {
-                // Why does this work?
-                let window_scale = window.height().min(window.width());
-
-                state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window_scale).to_radians();
-                state.yaw -= (settings.mouse_sensitivity * ev.delta.x * window_scale).to_radians();
+    let primary_window = windows.get_primary();
+    if let Some(window) = primary_window {
+        for mut transform in query.iter_mut() {
+            for ev in motion_evr.iter() {
+                if window.cursor_locked() {
+                    // Why does this work?
+                    let window_scale = window.height().min(window.width());
+    
+                    state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window_scale).to_radians();
+                    state.yaw -= (settings.mouse_sensitivity * ev.delta.x * window_scale).to_radians();
+                }
+    
+                transform.rotation = Quat::from_axis_angle(Vec3::Y, state.yaw) * Quat::from_axis_angle(Vec3::X, state.pitch);
             }
-
-            transform.rotation = Quat::from_axis_angle(Vec3::Y, state.yaw) * Quat::from_axis_angle(Vec3::X, state.pitch);
         }
     }
 }
@@ -68,16 +70,17 @@ fn cursor_grab(
     mouse_button_input: Res<Input<MouseButton>>,
     mut windows: ResMut<Windows>
 ) {
-    let window = windows.get_primary_mut().unwrap();
-
-    // Lock and hide the cursor if RMB is pressed
-    let rmb_pressed = mouse_button_input.pressed(MouseButton::Right);
-    if rmb_pressed && !window.cursor_locked() {
-        window.set_cursor_lock_mode(true);
-        window.set_cursor_visibility(false);
-    } else if !rmb_pressed && window.cursor_locked() {
-        window.set_cursor_lock_mode(false);
-        window.set_cursor_visibility(true);
+    let primary_window = windows.get_primary_mut();
+    if let Some(window) = primary_window {
+        // Lock and hide the cursor if RMB is pressed
+        let rmb_pressed = mouse_button_input.pressed(MouseButton::Right);
+        if rmb_pressed && !window.cursor_locked() {
+            window.set_cursor_lock_mode(true);
+            window.set_cursor_visibility(false);
+        } else if !rmb_pressed && window.cursor_locked() {
+            window.set_cursor_lock_mode(false);
+            window.set_cursor_visibility(true);
+        }
     }
 }
 
