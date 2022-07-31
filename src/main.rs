@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy::input::mouse::MouseButton;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickableBundle, PickingCameraBundle, RayCastSource, PickingRaycastSet};
 use bevy_mod_raycast::IntersectionData;
-use bevy_inspector_egui::WorldInspectorPlugin;
 
 use camera::{FreeCameraPlugin, FreeCamera};
 
@@ -20,7 +19,7 @@ fn main() {
         .add_plugin(FreeCameraPlugin)
         .add_startup_system(set_window_title)
         .add_startup_system(setup)
-        .add_system(bevy::input::system::exit_on_esc_system)
+        .add_system(bevy::window::close_on_esc)
         .add_plugins(DefaultPickingPlugins)
         .add_plugin(DebugCursorPickingPlugin)
         .add_event::<PlaceBlockRequest>()
@@ -28,7 +27,6 @@ fn main() {
         .add_system(build_events)
         .add_system(place_block)
         .add_system(delete_block)
-        .add_plugin(WorldInspectorPlugin::new())
         .run();
 }
 
@@ -94,7 +92,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
     })
     .insert_bundle(PickableBundle::default());
 
-    commands.spawn_bundle(PerspectiveCameraBundle {
+    commands.spawn_bundle(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     })
