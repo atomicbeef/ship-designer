@@ -1,15 +1,54 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::hashbrown::HashMap};
 use bevy::input::mouse::MouseButton;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickableBundle, PickingCameraBundle, RayCastSource, PickingRaycastSet};
-use bevy_mod_raycast::IntersectionData;
 
 use camera::{FreeCameraPlugin, FreeCamera};
 
 pub mod camera;
 pub mod settings;
 
-struct PlaceBlockRequest(Entity, IntersectionData);
-struct DeleteBlockRequest(Entity);
+struct PlaceBlockRequest(Entity, GridPos);
+struct DeleteBlockRequest(Entity, GridPos);
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+struct GridPos {
+    x: i32,
+    y: i32,
+    z: i32
+}
+
+impl From<Transform> for GridPos {
+    fn from(transform: Transform) -> Self {
+        GridPos {
+            x: transform.translation.x as i32,
+            y: transform.translation.y as i32,
+            z: transform.translation.z as i32
+        }
+    }
+}
+
+impl From<&Transform> for GridPos {
+    fn from(transform: &Transform) -> Self {
+        GridPos {
+            x: transform.translation.x as i32,
+            y: transform.translation.y as i32,
+            z: transform.translation.z as i32
+        }
+    }
+}
+
+impl From<Vec3> for GridPos {
+    fn from(vec3: Vec3) -> Self {
+        GridPos {
+            x: vec3.x as i32,
+            y: vec3.y as i32,
+            z: vec3.z as i32
+        }
+    }
+}
+
+#[derive(Component)]
+struct ShipData(HashMap<GridPos, Entity>);
 
 fn main() {
     App::new()
@@ -41,15 +80,26 @@ fn build_events(
     keys: Res<Input<KeyCode>>,
     mut ev_place_block_request: EventWriter<PlaceBlockRequest>,
     mut ev_delete_block_request: EventWriter<DeleteBlockRequest>,
-    query: Query<&RayCastSource<PickingRaycastSet>>
+    intersection_query: Query<&RayCastSource<PickingRaycastSet>>,
+    transform_query: Query<&Transform>
 ) {
     if mouse_buttons.just_pressed(MouseButton::Left) {
-        let intersection_data = query.iter().next().unwrap().intersect_top();
+        let intersection_data = intersection_query.iter().next().unwrap().intersect_top();
         if let Some(data) = intersection_data {
+            // Block deletion
             if keys.pressed(KeyCode::LAlt) {
-                ev_delete_block_request.send(DeleteBlockRequest(data.0));
+                if let Ok(block_transform) = transform_query.get(data.0) {
+                    let block_pos = block_transform.into();
+
+                    ev_delete_block_request.send(DeleteBlockRequest(data.0, block_pos));
+                }
+            // Block placement
             } else {
-                ev_place_block_request.send(PlaceBlockRequest(data.0, data.1.clone()));
+                if let Ok(origin_block_transform) = transform_query.get(data.0) {
+                    let block_pos = (origin_block_transform.translation + data.1.normal()).into();
+
+                    ev_place_block_request.send(PlaceBlockRequest(data.0, block_pos));
+                }
             }
         }
     }
@@ -57,29 +107,38 @@ fn build_events(
 
 fn place_block(
     mut ev_place_block_requests: EventReader<PlaceBlockRequest>,
-    query: Query<&Transform>,
+    mut ship_data_query: Query<&mut ShipData>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ) {
     for event in ev_place_block_requests.iter() {
-        if let Ok(origin_block_transform) = query.get(event.0) {
-            let new_block_transform = origin_block_transform.with_translation(origin_block_transform.translation + event.1.normal());
+        let block_id = commands.spawn_bundle(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+            transform: Transform { translation: Vec3::new(event.1.x as f32, event.1.y as f32, event.1.z as f32), ..Default::default() },
+            ..Default::default()
+        })
+        .insert_bundle(PickableBundle::default())
+        .id();
 
-            commands.spawn_bundle(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-                material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-                transform: new_block_transform,
-                ..Default::default()
-            })
-            .insert_bundle(PickableBundle::default());
+        if let Some(mut ship_data) = ship_data_query.iter_mut().next() {
+            ship_data.0.insert(event.1, block_id);
         }
     }
 }
 
-fn delete_block(mut ev_delete_block_requests: EventReader<DeleteBlockRequest>, mut commands: Commands) {
+fn delete_block(
+    mut ev_delete_block_requests: EventReader<DeleteBlockRequest>,
+    mut commands: Commands,
+    mut ship_data_query: Query<&mut ShipData>
+) {
     for event in ev_delete_block_requests.iter() {
         commands.entity(event.0).despawn();
+
+        if let Some(mut ship_data) = ship_data_query.iter_mut().next() {
+            ship_data.0.remove(&event.1);
+        }
     }
 }
 
@@ -98,4 +157,6 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
     })
     .insert(FreeCamera)
     .insert_bundle(PickingCameraBundle::default());
+
+    commands.spawn().insert(ShipData(HashMap::new()));
 }
