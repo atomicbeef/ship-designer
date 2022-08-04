@@ -2929,7 +2929,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ship-designer"
+name = "ship-designer-client"
 version = "0.1.0"
 dependencies = [
  "bevy",
@@ -2937,6 +2937,25 @@ dependencies = [
  "bevy_mod_picking",
  "bevy_mod_raycast",
  "iyes_loopless",
+ "ship-designer-common",
+ "uflow",
+]
+
+[[package]]
+name = "ship-designer-common"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "uflow",
+]
+
+[[package]]
+name = "ship-designer-server"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "iyes_loopless",
+ "ship-designer-common",
  "uflow",
 ]
 
