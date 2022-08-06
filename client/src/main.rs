@@ -1,6 +1,8 @@
-use bevy::{prelude::*, utils::hashbrown::HashMap};
+use bevy::prelude::*;
 use bevy::input::mouse::MouseButton;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickableBundle, PickingCameraBundle, RayCastSource, PickingRaycastSet};
+
+use common::grid::{Grid, GridPos};
 
 use camera::{FreeCameraPlugin, FreeCamera};
 
@@ -9,46 +11,6 @@ pub mod settings;
 
 struct PlaceBlockRequest(Entity, GridPos);
 struct DeleteBlockRequest(Entity, GridPos);
-
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
-struct GridPos {
-    x: i32,
-    y: i32,
-    z: i32
-}
-
-impl From<Transform> for GridPos {
-    fn from(transform: Transform) -> Self {
-        GridPos {
-            x: transform.translation.x as i32,
-            y: transform.translation.y as i32,
-            z: transform.translation.z as i32
-        }
-    }
-}
-
-impl From<&Transform> for GridPos {
-    fn from(transform: &Transform) -> Self {
-        GridPos {
-            x: transform.translation.x as i32,
-            y: transform.translation.y as i32,
-            z: transform.translation.z as i32
-        }
-    }
-}
-
-impl From<Vec3> for GridPos {
-    fn from(vec3: Vec3) -> Self {
-        GridPos {
-            x: vec3.x as i32,
-            y: vec3.y as i32,
-            z: vec3.z as i32
-        }
-    }
-}
-
-#[derive(Component)]
-struct ShipData(HashMap<GridPos, Entity>);
 
 fn main() {
     App::new()
@@ -89,7 +51,7 @@ fn build_events(
             // Block deletion
             if keys.pressed(KeyCode::LAlt) {
                 if let Ok(block_transform) = transform_query.get(data.0) {
-                    let block_pos = block_transform.into();
+                    let block_pos: GridPos = block_transform.into();
 
                     ev_delete_block_request.send(DeleteBlockRequest(data.0, block_pos));
                 }
@@ -107,7 +69,7 @@ fn build_events(
 
 fn place_block(
     mut ev_place_block_requests: EventReader<PlaceBlockRequest>,
-    mut ship_data_query: Query<&mut ShipData>,
+    mut grid_query: Query<&mut Grid>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>
@@ -122,8 +84,8 @@ fn place_block(
         .insert_bundle(PickableBundle::default())
         .id();
 
-        if let Some(mut ship_data) = ship_data_query.iter_mut().next() {
-            ship_data.0.insert(event.1, block_id);
+        if let Some(mut grid) = grid_query.iter_mut().next() {
+            grid.set(&event.1, Some(block_id));
         }
     }
 }
@@ -131,13 +93,13 @@ fn place_block(
 fn delete_block(
     mut ev_delete_block_requests: EventReader<DeleteBlockRequest>,
     mut commands: Commands,
-    mut ship_data_query: Query<&mut ShipData>
+    mut grid_query: Query<&mut Grid>
 ) {
     for event in ev_delete_block_requests.iter() {
         commands.entity(event.0).despawn();
 
-        if let Some(mut ship_data) = ship_data_query.iter_mut().next() {
-            ship_data.0.remove(&event.1);
+        if let Some(mut grid) = grid_query.iter_mut().next() {
+            grid.set(&event.1, None);
         }
     }
 }
@@ -158,5 +120,5 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
     .insert(FreeCamera)
     .insert_bundle(PickingCameraBundle::default());
 
-    commands.spawn().insert(ShipData(HashMap::new()));
+    commands.spawn().insert(Grid::new());
 }
