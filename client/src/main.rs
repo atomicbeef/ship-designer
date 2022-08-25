@@ -1,21 +1,46 @@
+use std::time::Duration;
+
+use bevy::log::{Level, LogSettings};
 use bevy::prelude::*;
-use bevy::input::mouse::MouseButton;
-use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickableBundle, PickingCameraBundle, RayCastSource, PickingRaycastSet};
+use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickableBundle, PickingCameraBundle};
+use iyes_loopless::prelude::*;
+use uflow::Client;
+
+mod building;
+mod camera;
+mod connection_state;
+mod packet_handling;
+mod settings;
 
 use common::grid::{Grid, GridPos};
+use common::events::{PlaceBlockRequest, PlaceBlockCommand, DeleteBlockRequest, DeleteBlockCommand};
+use crate::building::{build_request_events, place_blocks, delete_blocks, send_place_block_requests, send_delete_block_requests};
+use crate::camera::{FreeCameraPlugin, FreeCamera};
+use crate::connection_state::ConnectionState;
+use crate::packet_handling::process_packets;
 
-use camera::{FreeCameraPlugin, FreeCamera};
-
-pub mod camera;
-pub mod settings;
-
-struct PlaceBlockRequest(Entity, GridPos);
-struct DeleteBlockRequest(Entity, GridPos);
+#[derive(StageLabel)]
+struct NetworkStage;
 
 fn main() {
+    let mut client = Client::bind_any_ipv4().expect("Failed to bind socket!");
+    let server_address = "127.0.0.1:36756";
+    let peer_config = uflow::EndpointConfig::default();
+
+    let server = client.connect(server_address, peer_config).expect("Failed to connect to server!");
+
+    let connection_state = ConnectionState { client, server, other_peers: Vec::new() };
+
+    let mut packet_process_stage = SystemStage::parallel();
+    packet_process_stage.add_system(process_packets);
+
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(settings::Settings::default())
+        .insert_resource(LogSettings {
+            level: Level::DEBUG,
+            filter: "wgpu=error".to_string()
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(FreeCameraPlugin)
         .add_startup_system(set_window_title)
@@ -23,11 +48,22 @@ fn main() {
         .add_system(bevy::window::close_on_esc)
         .add_plugins(DefaultPickingPlugins)
         .add_plugin(DebugCursorPickingPlugin)
+        .insert_resource(connection_state)
+        .add_stage_before(
+            CoreStage::Update,
+            NetworkStage,
+            FixedTimestepStage::new(Duration::from_millis(16))
+                .with_stage(packet_process_stage)
+        )
         .add_event::<PlaceBlockRequest>()
+        .add_event::<PlaceBlockCommand>()
         .add_event::<DeleteBlockRequest>()
-        .add_system(build_events)
-        .add_system(place_block)
-        .add_system(delete_block)
+        .add_event::<DeleteBlockCommand>()
+        .add_system(build_request_events)
+        .add_system(send_place_block_requests)
+        .add_system(send_delete_block_requests)
+        .add_system(place_blocks)
+        .add_system(delete_blocks)
         .run();
 }
 
@@ -37,81 +73,15 @@ fn set_window_title(mut windows: ResMut<Windows>) {
     window.set_title("Ship Designer".to_string());
 }
 
-fn build_events(
-    mouse_buttons: Res<Input<MouseButton>>,
-    keys: Res<Input<KeyCode>>,
-    mut ev_place_block_request: EventWriter<PlaceBlockRequest>,
-    mut ev_delete_block_request: EventWriter<DeleteBlockRequest>,
-    intersection_query: Query<&RayCastSource<PickingRaycastSet>>,
-    transform_query: Query<&Transform>
-) {
-    if mouse_buttons.just_pressed(MouseButton::Left) {
-        let intersection_data = intersection_query.iter().next().unwrap().intersect_top();
-        if let Some(data) = intersection_data {
-            // Block deletion
-            if keys.pressed(KeyCode::LAlt) {
-                if let Ok(block_transform) = transform_query.get(data.0) {
-                    let block_pos: GridPos = block_transform.into();
-
-                    ev_delete_block_request.send(DeleteBlockRequest(data.0, block_pos));
-                }
-            // Block placement
-            } else {
-                if let Ok(origin_block_transform) = transform_query.get(data.0) {
-                    let block_pos = (origin_block_transform.translation + data.1.normal()).into();
-
-                    ev_place_block_request.send(PlaceBlockRequest(data.0, block_pos));
-                }
-            }
-        }
-    }
-}
-
-fn place_block(
-    mut ev_place_block_requests: EventReader<PlaceBlockRequest>,
-    mut grid_query: Query<&mut Grid>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>
-) {
-    for event in ev_place_block_requests.iter() {
-        let block_id = commands.spawn_bundle(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-            transform: Transform { translation: Vec3::new(event.1.x as f32, event.1.y as f32, event.1.z as f32), ..Default::default() },
-            ..Default::default()
-        })
-        .insert_bundle(PickableBundle::default())
-        .id();
-
-        if let Some(mut grid) = grid_query.iter_mut().next() {
-            grid.set(&event.1, Some(block_id));
-        }
-    }
-}
-
-fn delete_block(
-    mut ev_delete_block_requests: EventReader<DeleteBlockRequest>,
-    mut commands: Commands,
-    mut grid_query: Query<&mut Grid>
-) {
-    for event in ev_delete_block_requests.iter() {
-        commands.entity(event.0).despawn();
-
-        if let Some(mut grid) = grid_query.iter_mut().next() {
-            grid.set(&event.1, None);
-        }
-    }
-}
-
 fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
-    commands.spawn_bundle(PbrBundle {
+    let starter_cube = commands.spawn_bundle(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         transform: Transform::from_xyz(0.0, 0.0, 0.0),
         ..Default::default()
     })
-    .insert_bundle(PickableBundle::default());
+    .insert_bundle(PickableBundle::default())
+    .id();
 
     commands.spawn_bundle(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -120,5 +90,8 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
     .insert(FreeCamera)
     .insert_bundle(PickingCameraBundle::default());
 
-    commands.spawn().insert(Grid::new());
+    let mut grid = Grid::new();
+    grid.set(&GridPos::new(0, 0, 0), Some(starter_cube));
+
+    commands.spawn().insert(grid);
 }

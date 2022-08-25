@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::{Transform, Vec3, Entity, Component};
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct GridPos {
     pub x: i32,
     pub y: i32,
@@ -39,6 +39,12 @@ impl From<Vec3> for GridPos {
     }
 }
 
+impl GridPos {
+    pub fn new(x: i32, y: i32, z: i32) -> Self {
+        GridPos { x, y, z }
+    }
+}
+
 #[derive(Component)]
 pub struct Grid {
     grid: HashMap<GridPos, Entity>,
@@ -63,5 +69,9 @@ impl Grid {
             Some(x) => { self.grid.insert(*pos, x); },
             None => { self.grid.remove(pos); },
         }
+    }
+
+    pub fn exists_at(&self, pos: &GridPos) -> bool {
+        self.grid.contains_key(pos)
     }
 }

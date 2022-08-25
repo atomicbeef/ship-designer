@@ -5,10 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Launch",
+            "name": "(Windows) Server Launch",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/target/debug/ship-designer.exe",
+            "program": "${workspaceRoot}/target/debug/ship-designer-server.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [],
+            "externalConsole": true
+        },
+        {
+            "name": "(Windows) Client Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/ship-designer-client.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
@@ -18,15 +29,14 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'ship-designer'",
+            "name": "Debug executable 'ship-designer-server'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=ship-designer",
-                    "--package=ship-designer"
+                    "--bin=ship-designer-server",
                 ],
                 "filter": {
-                    "name": "ship-designer",
+                    "name": "ship-designer-server",
                     "kind": "bin"
                 }
             },
