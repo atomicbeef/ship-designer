@@ -44,9 +44,9 @@ pub fn send_place_block_commands(
     mut send_place_block_reader: EventReader<PlaceBlockCommand>
 ) {
     for place_block_command in send_place_block_reader.iter() {
-        for peer in server_state.peer_list.iter_mut() {
+        for peer in server_state.peers_mut() {
             let packet: Packet = place_block_command.into();
-            peer.send(packet.into(), Channel::BlockCommands.into(), SendMode::Reliable);
+            peer.send((&packet).into(), Channel::BlockCommands.into(), SendMode::Reliable);
         }
     }
 }
@@ -56,9 +56,9 @@ pub fn send_delete_block_commands(
     mut send_delete_block_reader: EventReader<DeleteBlockCommand>
 ) {
     for delete_block_command in send_delete_block_reader.iter() {
-        for peer in server_state.peer_list.iter_mut() {
+        for peer in server_state.peers_mut() {
             let packet: Packet = delete_block_command.into();
-            peer.send(packet.into(), Channel::BlockCommands.into(), SendMode::Reliable);
+            peer.send((&packet).into(), Channel::BlockCommands.into(), SendMode::Reliable);
         }
     }
 }

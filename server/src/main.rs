@@ -9,11 +9,13 @@ use iyes_loopless::prelude::*;
 
 mod building_systems;
 mod packet_handling;
+mod player_connection_event_systems;
 mod server_state;
 
 use building_systems::{send_place_block_commands, send_delete_block_commands};
-use common::grid::Grid;
-use common::events::{PlaceBlockRequest, PlaceBlockCommand, DeleteBlockRequest, DeleteBlockCommand};
+use common::grid::{Grid, GridPos};
+use common::events::{PlaceBlockRequest, PlaceBlockCommand, DeleteBlockRequest, DeleteBlockCommand, PlayerConnected, PlayerDisconnected};
+use player_connection_event_systems::{send_player_connected, send_player_disconnected};
 
 use crate::building_systems::{confirm_place_block_requests, confirm_delete_block_requests};
 use crate::packet_handling::process_packets;
@@ -24,12 +26,12 @@ struct NetworkStage;
 
 fn main() {
     let address = "127.0.0.1:36756";
-    let max_peer_count = 2;
+    let max_peer_count = 12;
     let peer_config = uflow::EndpointConfig::default();
     let server = uflow::Server::bind(address, max_peer_count, peer_config)
         .expect(&format!("Failed to bind on {}", address));
     
-    let server_state = ServerState { server, peer_list: Vec::new() };
+    let server_state = ServerState::new(server);
 
     let mut packet_process_stage = SystemStage::parallel();
     packet_process_stage.add_system(process_packets);
@@ -52,6 +54,8 @@ fn main() {
         .add_event::<PlaceBlockCommand>()
         .add_event::<DeleteBlockRequest>()
         .add_event::<DeleteBlockCommand>()
+        .add_event::<PlayerConnected>()
+        .add_event::<PlayerDisconnected>()
         .add_stage_before(
             CoreStage::Update,
             NetworkStage,
@@ -62,9 +66,13 @@ fn main() {
         .add_system(confirm_delete_block_requests)
         .add_system(send_place_block_commands)
         .add_system(send_delete_block_commands)
+        .add_system(send_player_connected)
+        .add_system(send_player_disconnected)
         .run();
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn().insert(Grid::new());
+    let mut grid = Grid::new();
+    grid.set(&GridPos::new(0, 0, 0), Some(commands.spawn().id()));
+    commands.spawn().insert(grid);
 }

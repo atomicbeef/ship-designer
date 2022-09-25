@@ -46,7 +46,7 @@ pub fn send_place_block_requests(
 ) {
     for place_block_request in place_block_request_reader.iter() {
         let packet: Packet = place_block_request.into();
-        connection_state.server.send(packet.into(), Channel::BlockCommands.into(), SendMode::Reliable);
+        connection_state.server.send((&packet).into(), Channel::BlockCommands.into(), SendMode::Reliable);
     }
 }
 
@@ -56,8 +56,24 @@ pub fn send_delete_block_requests(
 ) {
     for delete_block_request in delete_block_request_reader.iter() {
         let packet: Packet = delete_block_request.into();
-        connection_state.server.send(packet.into(), Channel::BlockCommands.into(), SendMode::Reliable);
+        connection_state.server.send((&packet).into(), Channel::BlockCommands.into(), SendMode::Reliable);
     }
+}
+
+pub fn spawn_cube(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    pos: GridPos
+) -> Entity {
+    commands.spawn_bundle(PbrBundle {
+        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        transform: Transform::from(pos),
+        ..Default::default()
+    })
+    .insert_bundle(PickableBundle::default())
+    .id()
 }
 
 pub fn place_blocks(
@@ -68,14 +84,7 @@ pub fn place_blocks(
     mut materials: ResMut<Assets<StandardMaterial>>
 ) {
     for event in place_block_command_reader.iter() {
-        let block_id = commands.spawn_bundle(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-            transform: Transform { translation: Vec3::new(event.0.x as f32, event.0.y as f32, event.0.z as f32), ..Default::default() },
-            ..Default::default()
-        })
-        .insert_bundle(PickableBundle::default())
-        .id();
+        let block_id = spawn_cube(&mut commands, &mut meshes, &mut materials, event.0);
 
         if let Some(mut grid) = grid_query.iter_mut().next() {
             grid.set(&event.0, Some(block_id));

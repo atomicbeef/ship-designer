@@ -1,13 +1,24 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use thiserror::Error;
 
-use crate::grid::GridPos;
+use crate::{grid::GridPos, player::Player};
+
+pub trait PacketSerialize<T> {
+    fn write(&mut self, x: T);
+}
+
+pub trait PacketDeserialize<T> {
+    fn read(&mut self) -> Result<T, PacketError>;
+}
 
 #[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum PacketType {
     PlaceBlock,
-    DeleteBlock
+    DeleteBlock,
+    InitialState,
+    PlayerConnected,
+    PlayerDisconnected
 }
 
 #[derive(Debug, Clone)]
@@ -45,17 +56,6 @@ impl Packet {
         self.packet_type
     }
 
-    pub fn next_byte(&mut self) -> Result<u8, PacketError> {
-        if self.index >= self.data.len() {
-            Err(PacketError::BoundsError(self.clone()))
-        } else {
-            let byte = self.data[self.index];
-            self.index += 1;
-            
-            Ok(byte)
-        }
-    }
-
     pub fn next_bytes(&mut self, num_bytes: usize) -> Result<&[u8], PacketError> {
         if self.index + num_bytes > self.data.len() {
             Err(PacketError::BoundsError(self.clone()))
@@ -67,14 +67,156 @@ impl Packet {
         }
     }
 
-    pub fn write_byte(&mut self, byte: u8) {
-        self.data.push(byte);
-    }
-
     pub fn write_bytes(&mut self, bytes: &[u8]) {
         for byte in bytes {
             self.data.push(*byte);
         }
+    }
+}
+
+impl PacketSerialize<u8> for Packet {
+    fn write(&mut self, num: u8) {
+        self.data.push(num);
+    }
+}
+
+impl PacketDeserialize<u8> for Packet {
+    fn read(&mut self) -> Result<u8, PacketError> {
+        if self.index >= self.data.len() {
+            Err(PacketError::BoundsError(self.clone()))
+        } else {
+            let byte = self.data[self.index];
+            self.index += 1;
+            
+            Ok(byte)
+        }
+    }
+}
+
+impl PacketSerialize<i16> for Packet {
+    fn write(&mut self, num: i16) {
+        self.write_bytes(&num.to_le_bytes());
+    }
+}
+
+impl PacketDeserialize<i16> for Packet {
+    fn read(&mut self) -> Result<i16, PacketError> {
+        let i16_bytes = self.next_bytes(2)?;
+        Ok(i16::from_le_bytes(i16_bytes.try_into().unwrap()))
+    }
+}
+
+impl PacketSerialize<u16> for Packet {
+    fn write(&mut self, num: u16) {
+        self.write_bytes(&num.to_le_bytes());
+    }
+}
+
+impl PacketDeserialize<u16> for Packet {
+    fn read(&mut self) -> Result<u16, PacketError> {
+        let u16_bytes = self.next_bytes(2)?;
+        Ok(u16::from_le_bytes(u16_bytes.try_into().unwrap()))
+    }
+}
+
+impl PacketSerialize<u32> for Packet {
+    fn write(&mut self, num: u32) {
+        self.write_bytes(&num.to_le_bytes());
+    }
+}
+
+impl PacketDeserialize<u32> for Packet {
+    fn read(&mut self) -> Result<u32, PacketError> {
+        let u32_bytes = self.next_bytes(4)?;
+        Ok(u32::from_le_bytes(u32_bytes.try_into().unwrap()))
+    }
+}
+
+impl PacketSerialize<u64> for Packet {
+    fn write(&mut self, num: u64) {
+        self.write_bytes(&num.to_le_bytes());
+    }
+}
+
+impl PacketDeserialize<u64> for Packet {
+    fn read(&mut self) -> Result<u64, PacketError> {
+        let u64_bytes = self.next_bytes(8)?;
+        Ok(u64::from_le_bytes(u64_bytes.try_into().unwrap()))
+    }
+}
+
+impl PacketSerialize<&String> for Packet {
+    // A maximum of 2^16 characters will be written
+    // Any remaining characters in the string will silently be ignored
+    fn write(&mut self, string: &String) {
+        self.write(string.len() as u16);
+        self.write_bytes(string.as_bytes());
+    }
+}
+
+impl PacketDeserialize<String> for Packet {
+    fn read(&mut self) -> Result<String, PacketError> {
+        let string_len: u16 = self.read()?;
+        let string_bytes = self.next_bytes(string_len.into())?;
+        
+        Ok(String::from_utf8_lossy(string_bytes).into_owned())
+    }
+}
+
+impl PacketSerialize<&Player> for Packet {
+    fn write(&mut self, player: &Player) {
+        self.write(player.id());
+        self.write(player.name());
+    }
+}
+
+impl PacketDeserialize<Player> for Packet {
+    fn read(&mut self) -> Result<Player, PacketError> {
+        let id: u8 = self.read()?;
+        let name: String = self.read()?;
+        Ok(Player::new(id, name))
+    }
+}
+
+impl PacketSerialize<&Vec<GridPos>> for Packet {
+    fn write(&mut self, positions: &Vec<GridPos>) {
+        self.write(positions.len() as u32);
+        for position in positions.iter() {
+            self.write(*position);
+        }
+    }
+}
+
+impl PacketDeserialize<Vec<GridPos>> for Packet {
+    fn read(&mut self) -> Result<Vec<GridPos>, PacketError> {
+        let length: u32 = self.read()?;
+        let mut positions: Vec<GridPos> = Vec::with_capacity(length as usize);
+        for _ in 0..length {
+            positions.push(self.read()?);
+        }
+
+        Ok(positions)
+    }
+}
+
+impl PacketSerialize<&Vec<Player>> for Packet {
+    fn write(&mut self, players: &Vec<Player>) {
+        self.write(players.len() as u32);
+        for player in players.iter() {
+            self.write(player);
+        }
+    }
+}
+
+impl PacketDeserialize<Vec<Player>> for Packet {
+    fn read(&mut self) -> Result<Vec<Player>, PacketError> {
+        let length: u32 = self.read()?;
+        let mut players: Vec<Player> = Vec::with_capacity(length as usize);
+        for _ in 0..length {
+            players.push(self.read()?);
+        }
+
+        Ok(players)
     }
 }
 
@@ -96,38 +238,15 @@ impl TryFrom<Box<[u8]>> for Packet {
     }
 }
 
-impl From<Packet> for Box<[u8]> {
-    fn from(packet: Packet) -> Self {
+impl From<&Packet> for Box<[u8]> {
+    fn from(packet: &Packet) -> Self {
         let mut data: Vec<u8>= Vec::with_capacity(packet.data.len() + 1);
         
         data.push(packet.packet_type().into());
-        for byte in packet.data {
-            data.push(byte);
+        for byte in packet.data.iter() {
+            data.push(*byte);
         }
 
         data.into_boxed_slice()
     }
-}
-
-pub fn read_i32(packet: &mut Packet) -> Result<i32, PacketError> {
-    let i32_bytes = packet.next_bytes(4)?;
-    Ok(i32::from_le_bytes(i32_bytes.try_into().unwrap()))
-}
-
-pub fn write_i32(packet: &mut Packet, num: i32) {
-    packet.write_bytes(&num.to_le_bytes());
-}
-
-pub fn read_grid_pos(packet: &mut Packet) -> Result<GridPos, PacketError> {
-    let x = read_i32(packet)?;
-    let y = read_i32(packet)?;
-    let z = read_i32(packet)?;
-
-    Ok(GridPos::new(x, y, z))
-}
-
-pub fn write_grid_pos(packet: &mut Packet, pos: GridPos) {
-    write_i32(packet, pos.x);
-    write_i32(packet, pos.y);
-    write_i32(packet, pos.z);
 }

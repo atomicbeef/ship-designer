@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use uflow::Event::*;
 
-use common::events::{PlaceBlockRequest, DeleteBlockRequest};
+use common::events::{PlaceBlockRequest, DeleteBlockRequest, PlayerConnected, PlayerDisconnected};
 use common::packets::{Packet, PacketType};
 
 use crate::server_state::ServerState;
@@ -9,28 +9,34 @@ use crate::server_state::ServerState;
 pub fn process_packets(
     mut state: ResMut<ServerState>,
     mut place_block_request_writer: EventWriter<PlaceBlockRequest>,
-    mut delete_block_request_writer: EventWriter<DeleteBlockRequest>
+    mut delete_block_request_writer: EventWriter<DeleteBlockRequest>,
+    mut client_connected_writer: EventWriter<PlayerConnected>,
+    mut client_disconnected_writer: EventWriter<PlayerDisconnected>
 ) {
     state.server.step();
 
     for new_peer in state.server.incoming() {
         info!("New incoming connection from {}", new_peer.address());
-        state.peer_list.push(new_peer);
+        state.add_player(new_peer, "Test".to_string());
     }
 
-    for peer in state.peer_list.iter_mut() {
+    for (player, peer) in state.players_peers_mut() {
         for event in peer.poll_events() {
             match event {
                 Connect => {
-                    info!("{} connected", peer.address());
+                    info!("{} connected from {}", player.name(), peer.address());
+                    let player_connected_event = PlayerConnected { id: player.id(), name: player.name().clone() };
+                    client_connected_writer.send(player_connected_event);
                 },
 
                 Disconnect => {
-                    info!("{} disconnected", peer.address());
+                    info!("{} disconnected", player.name());
+                    client_disconnected_writer.send(PlayerDisconnected(player.id()));
                 },
 
                 Timeout => {
                     info!("{} timed out", peer.address());
+                    client_disconnected_writer.send(PlayerDisconnected(player.id()));
                 },
 
                 Receive(packet_data) => {
@@ -49,8 +55,6 @@ pub fn process_packets(
     }
 
     state.server.flush();
-
-    state.peer_list.retain(|peer| !peer.is_disconnected());
 }
 
 fn generate_events(
@@ -78,6 +82,9 @@ fn generate_events(
                     warn!(?err);
                 }
             }
-        }
+        },
+        PacketType::InitialState => {},
+        PacketType::PlayerConnected => {},
+        PacketType::PlayerDisconnected => {}
     }
 }

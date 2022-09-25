@@ -1,7 +1,8 @@
+use bevy::app::AppExit;
 use bevy::prelude::*;
 use uflow::Event::*;
 
-use common::events::{PlaceBlockCommand, DeleteBlockCommand};
+use common::events::{PlaceBlockCommand, DeleteBlockCommand, PlayerConnected, PlayerDisconnected, InitialState};
 use common::packets::{Packet, PacketType};
 
 use crate::connection_state::ConnectionState;
@@ -9,7 +10,11 @@ use crate::connection_state::ConnectionState;
 pub fn process_packets(
     mut state: ResMut<ConnectionState>,
     mut place_block_command_writer: EventWriter<PlaceBlockCommand>,
-    mut delete_block_command_writer: EventWriter<DeleteBlockCommand>
+    mut delete_block_command_writer: EventWriter<DeleteBlockCommand>,
+    mut player_connected_writer: EventWriter<PlayerConnected>,
+    mut player_disconnected_writer: EventWriter<PlayerDisconnected>,
+    mut app_exit_writer: EventWriter<AppExit>,
+    mut initial_state_writer: EventWriter<InitialState>
 ) {
     state.client.step();
 
@@ -20,14 +25,23 @@ pub fn process_packets(
             },
             Disconnect => {
                 info!("Disconnected from server");
+                app_exit_writer.send(AppExit);
             },
             Timeout => {
                 info!("Connection to server timed out!");
+                app_exit_writer.send(AppExit);
             },
             Receive(packet_data) => {
                 match Packet::try_from(packet_data) {
                     Ok(packet) => {
-                        generate_events(packet, &mut place_block_command_writer, &mut delete_block_command_writer);
+                        generate_events(
+                            packet,
+                            &mut place_block_command_writer,
+                            &mut delete_block_command_writer,
+                            &mut player_connected_writer,
+                            &mut player_disconnected_writer,
+                            &mut initial_state_writer
+                        );
                     },
                     Err(err) => {
                         warn!(?err);
@@ -41,7 +55,10 @@ pub fn process_packets(
 fn generate_events(
     packet: Packet,
     place_black_command_writer: &mut EventWriter<PlaceBlockCommand>,
-    delete_block_command_writer: &mut EventWriter<DeleteBlockCommand>
+    delete_block_command_writer: &mut EventWriter<DeleteBlockCommand>,
+    player_connected_writer: &mut EventWriter<PlayerConnected>,
+    player_disconnected_writer: &mut EventWriter<PlayerDisconnected>,
+    initial_state_writer: &mut EventWriter<InitialState>
 ) {
     match packet.packet_type() {
         PacketType::PlaceBlock => {
@@ -58,6 +75,36 @@ fn generate_events(
             match DeleteBlockCommand::try_from(packet) {
                 Ok(delete_block_command) => {
                     delete_block_command_writer.send(delete_block_command);
+                },
+                Err(err) => {
+                    warn!(?err);
+                }
+            }
+        },
+        PacketType::PlayerConnected => {
+            match PlayerConnected::try_from(packet) {
+                Ok(player_connected) => {
+                    player_connected_writer.send(player_connected);
+                },
+                Err(err) => {
+                    warn!(?err);
+                }
+            }
+        },
+        PacketType::PlayerDisconnected => {
+            match PlayerDisconnected::try_from(packet) {
+                Ok(player_disconnected) => {
+                    player_disconnected_writer.send(player_disconnected);
+                },
+                Err(err) => {
+                    warn!(?err);
+                }
+            }
+        },
+        PacketType::InitialState => {
+            match InitialState::try_from(packet) {
+                Ok(initial_state) => {
+                    initial_state_writer.send(initial_state);
                 },
                 Err(err) => {
                     warn!(?err);

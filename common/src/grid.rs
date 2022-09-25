@@ -1,20 +1,21 @@
-use std::collections::HashMap;
-
+use bevy::utils::hashbrown::HashMap;
 use bevy::prelude::{Transform, Vec3, Entity, Component};
+
+use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct GridPos {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32
+    pub x: i16,
+    pub y: i16,
+    pub z: i16
 }
 
 impl From<Transform> for GridPos {
     fn from(transform: Transform) -> Self {
         GridPos {
-            x: transform.translation.x as i32,
-            y: transform.translation.y as i32,
-            z: transform.translation.z as i32
+            x: transform.translation.x as i16,
+            y: transform.translation.y as i16,
+            z: transform.translation.z as i16
         }
     }
 }
@@ -22,9 +23,35 @@ impl From<Transform> for GridPos {
 impl From<&Transform> for GridPos {
     fn from(transform: &Transform) -> Self {
         GridPos {
-            x: transform.translation.x as i32,
-            y: transform.translation.y as i32,
-            z: transform.translation.z as i32
+            x: transform.translation.x as i16,
+            y: transform.translation.y as i16,
+            z: transform.translation.z as i16
+        }
+    }
+}
+
+impl From<GridPos> for Transform {
+    fn from(pos: GridPos) -> Self {
+        Transform {
+            translation: Vec3::new(
+                pos.x as f32,
+                pos.y as f32,
+                pos.z as f32
+            ),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<&GridPos> for Transform {
+    fn from(pos: &GridPos) -> Self {
+        Transform {
+            translation: Vec3::new(
+                pos.x as f32,
+                pos.y as f32,
+                pos.z as f32
+            ),
+            ..Default::default()
         }
     }
 }
@@ -32,15 +59,15 @@ impl From<&Transform> for GridPos {
 impl From<Vec3> for GridPos {
     fn from(vec3: Vec3) -> Self {
         GridPos {
-            x: vec3.x as i32,
-            y: vec3.y as i32,
-            z: vec3.z as i32
+            x: vec3.x as i16,
+            y: vec3.y as i16,
+            z: vec3.z as i16
         }
     }
 }
 
 impl GridPos {
-    pub fn new(x: i32, y: i32, z: i32) -> Self {
+    pub fn new(x: i16, y: i16, z: i16) -> Self {
         GridPos { x, y, z }
     }
 }
@@ -73,5 +100,27 @@ impl Grid {
 
     pub fn exists_at(&self, pos: &GridPos) -> bool {
         self.grid.contains_key(pos)
+    }
+
+    pub fn positions(&self) -> Vec<GridPos> {
+        self.grid.keys().cloned().collect()
+    }
+}
+
+impl PacketSerialize<GridPos> for Packet {
+    fn write(&mut self, pos: GridPos) {
+        self.write(pos.x);
+        self.write(pos.y);
+        self.write(pos.z);
+    }
+}
+
+impl PacketDeserialize<GridPos> for Packet {
+    fn read(&mut self) -> Result<GridPos, PacketError> {
+        let x: i16 = self.read()?;
+        let y: i16 = self.read()?;
+        let z: i16 = self.read()?;
+    
+        Ok(GridPos::new(x, y, z))
     }
 }
