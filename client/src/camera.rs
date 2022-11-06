@@ -53,11 +53,8 @@ fn camera_rotate(
         for mut transform in query.iter_mut() {
             for ev in motion_evr.iter() {
                 if window.cursor_locked() {
-                    // Why does this work?
-                    let window_scale = window.height().min(window.width());
-    
-                    state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window_scale).to_radians();
-                    state.yaw -= (settings.mouse_sensitivity * ev.delta.x * window_scale).to_radians();
+                    state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window.height()).to_radians();
+                    state.yaw -= (settings.mouse_sensitivity * ev.delta.x * window.width()).to_radians();
                 }
     
                 transform.rotation = Quat::from_axis_angle(Vec3::Y, state.yaw) * Quat::from_axis_angle(Vec3::X, state.pitch);
