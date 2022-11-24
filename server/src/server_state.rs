@@ -35,10 +35,6 @@ impl ServerState {
         self.players.values().map(|x| &x.0)
     }
 
-    pub fn players_mut(&mut self) -> impl Iterator<Item=&mut Player> {
-        self.players.values_mut().map(|x| &mut x.0)
-    }
-
     pub fn peer_mut(&mut self, id: u8) -> Option<&mut Peer> {
         match self.players.get_mut(&id) {
             Some(pair) => Some(&mut pair.1),
@@ -48,20 +44,6 @@ impl ServerState {
 
     pub fn peers_mut(&mut self) -> impl Iterator<Item=&mut Peer> {
         self.players.values_mut().map(|x| &mut x.1)
-    }
-    
-    pub fn player(&self, id: u8) -> Option<&Player> {
-        match self.players.get(&id) {
-            Some(pair) => Some(&pair.0),
-            None => None
-        }
-    }
-
-    pub fn player_mut(&mut self, id: u8) -> Option<&mut Player> {
-        match self.players.get_mut(&id) {
-            Some(pair) => Some(&mut pair.0),
-            None => None
-        }
     }
 
     pub fn players_peers_mut(&mut self) -> hash_map::ValuesMut<'_, u8, (Player, Peer)> {
