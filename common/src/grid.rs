@@ -1,6 +1,7 @@
 use bevy::utils::hashbrown::HashMap;
 use bevy::prelude::{Transform, Vec3, Entity, Component};
 
+use crate::materials::Material;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -74,25 +75,27 @@ impl GridPos {
 
 #[derive(Component)]
 pub struct Grid {
-    grid: HashMap<GridPos, Entity>,
+    grid: HashMap<GridPos, Material>,
+    entities: HashMap<GridPos, Entity>
 }
 
 impl Grid {
     pub fn new() -> Self {
         Grid {
-            grid: HashMap::new()
+            grid: HashMap::new(),
+            entities: HashMap::new()
         }
     }
 
-    pub fn get(&self, pos: &GridPos) -> Option<Entity> {
+    pub fn get(&self, pos: &GridPos) -> Option<Material> {
         match self.grid.get(pos) {
-            Some(entity) => Some(*entity),
+            Some(block) => Some(*block),
             None => None
         }
     }
 
-    pub fn set(&mut self, pos: &GridPos, entity: Option<Entity>) {
-        match entity {
+    pub fn set(&mut self, pos: &GridPos, block: Option<Material>) {
+        match block {
             Some(x) => { self.grid.insert(*pos, x); },
             None => { self.grid.remove(pos); },
         }
@@ -104,6 +107,20 @@ impl Grid {
 
     pub fn positions(&self) -> Vec<GridPos> {
         self.grid.keys().cloned().collect()
+    }
+
+    pub fn get_entity(&self, pos: &GridPos) -> Option<Entity> {
+        match self.entities.get(pos) {
+            Some(entity) => Some(*entity),
+            None => None
+        }
+    }
+
+    pub fn set_entity(&mut self, pos: &GridPos, entity: Option<Entity>) {
+        match entity {
+            Some(x) => { self.entities.insert(*pos, x); }
+            None => { self.entities.remove(pos); }
+        }
     }
 }
 

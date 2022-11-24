@@ -1,5 +1,9 @@
 pub mod channels;
 pub mod events;
 pub mod grid;
+pub mod materials;
+pub mod network_id;
 pub mod packets;
 pub mod player;
+pub mod predefined_shapes;
+pub mod shape;

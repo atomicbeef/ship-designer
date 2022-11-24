@@ -1,7 +1,7 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use thiserror::Error;
 
-use crate::{grid::GridPos, player::Player};
+use crate::{grid::GridPos, player::Player, network_id::NetworkId, shape::{ShapeHandle, ShapeHandleId, ShapeHandleType}};
 
 pub trait PacketSerialize<T> {
     fn write(&mut self, x: T);
@@ -14,8 +14,8 @@ pub trait PacketDeserialize<T> {
 #[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum PacketType {
-    PlaceBlock,
-    DeleteBlock,
+    PlaceShape,
+    DeleteShape,
     InitialState,
     PlayerConnected,
     PlayerDisconnected
@@ -71,6 +71,37 @@ impl Packet {
         for byte in bytes {
             self.data.push(*byte);
         }
+    }
+}
+
+impl TryFrom<Box<[u8]>> for Packet {
+    type Error = PacketError;
+
+    fn try_from(data: Box<[u8]>) -> Result<Self, Self::Error> {
+        if data.len() == 0 {
+            return Err(PacketError::EmptyPacket)
+        }
+
+        let packet_type_u8 = data[0];
+
+        match PacketType::try_from(packet_type_u8) {
+            // The index is 1 because the first byte of the packet is the type, which has already been read
+            Ok(packet_type) => Ok(Packet { data: data.to_vec(), index: 1, packet_type }),
+            Err(_) => Err(PacketError::InvalidTypeError(packet_type_u8))
+        }
+    }
+}
+
+impl From<&Packet> for Box<[u8]> {
+    fn from(packet: &Packet) -> Self {
+        let mut data: Vec<u8>= Vec::with_capacity(packet.data.len() + 1);
+        
+        data.push(packet.packet_type().into());
+        for byte in packet.data.iter() {
+            data.push(*byte);
+        }
+
+        data.into_boxed_slice()
     }
 }
 
@@ -178,6 +209,53 @@ impl PacketDeserialize<Player> for Packet {
     }
 }
 
+impl PacketSerialize<NetworkId> for Packet {
+    fn write(&mut self, id: NetworkId) {
+        self.write(id.id());
+    }
+}
+
+impl PacketDeserialize<NetworkId> for Packet {
+    fn read(&mut self) -> Result<NetworkId, PacketError> {
+        let id: u32 = self.read()?;
+        Ok(NetworkId::from(id))
+    }
+}
+
+impl PacketSerialize<ShapeHandleId> for Packet {
+    fn write(&mut self, shape_handle_id: ShapeHandleId) {
+        self.write(shape_handle_id.id());
+    }
+}
+
+impl PacketDeserialize<ShapeHandleId> for Packet {
+    fn read(&mut self) -> Result<ShapeHandleId, PacketError> {
+        let id: u32 = self.read()?;
+        Ok(ShapeHandleId::from(id))
+    }
+}
+
+impl PacketSerialize<ShapeHandle> for Packet {
+    fn write(&mut self, shape_handle: ShapeHandle) {
+        self.write(shape_handle.id());
+        self.write(u8::from(shape_handle.handle_type()));
+    }
+}
+
+impl PacketDeserialize<ShapeHandle> for Packet {
+    fn read(&mut self) -> Result<ShapeHandle, PacketError> {
+        let id: ShapeHandleId = self.read()?;
+
+        let handle_type: u8 = self.read()?;
+        let handle_type = match ShapeHandleType::try_from(handle_type) {
+            Ok(x) => x,
+            Err(_) => { return Err(PacketError::InvalidPacketError(self.clone())); }
+        };
+
+        Ok(ShapeHandle::new(id, handle_type))
+    }
+}
+
 impl PacketSerialize<&Vec<GridPos>> for Packet {
     fn write(&mut self, positions: &Vec<GridPos>) {
         self.write(positions.len() as u32);
@@ -220,33 +298,28 @@ impl PacketDeserialize<Vec<Player>> for Packet {
     }
 }
 
-impl TryFrom<Box<[u8]>> for Packet {
-    type Error = PacketError;
-
-    fn try_from(data: Box<[u8]>) -> Result<Self, Self::Error> {
-        if data.len() == 0 {
-            return Err(PacketError::EmptyPacket)
-        }
-
-        let packet_type_u8 = data[0];
-
-        match PacketType::try_from(packet_type_u8) {
-            // The index is 1 because the first byte of the packet is the type, which has already been read
-            Ok(packet_type) => Ok(Packet { data: data.to_vec(), index: 1, packet_type }),
-            Err(_) => Err(PacketError::InvalidTypeError(packet_type_u8))
+impl PacketSerialize<&Vec<(ShapeHandle, GridPos, NetworkId)>> for Packet {
+    fn write(&mut self, shapes: &Vec<(ShapeHandle, GridPos, NetworkId)>) {
+        self.write(shapes.len() as u32);
+        for (shape_handle, pos, network_id) in shapes {
+            self.write(*shape_handle);
+            self.write(*pos);
+            self.write(*network_id);
         }
     }
 }
 
-impl From<&Packet> for Box<[u8]> {
-    fn from(packet: &Packet) -> Self {
-        let mut data: Vec<u8>= Vec::with_capacity(packet.data.len() + 1);
-        
-        data.push(packet.packet_type().into());
-        for byte in packet.data.iter() {
-            data.push(*byte);
+impl PacketDeserialize<Vec<(ShapeHandle, GridPos, NetworkId)>> for Packet {
+    fn read(&mut self) -> Result<Vec<(ShapeHandle, GridPos, NetworkId)>, PacketError> {
+        let length: u32 = self.read()?;
+        let mut shapes: Vec<(ShapeHandle, GridPos, NetworkId)> = Vec::with_capacity(length as usize);
+        for _ in 0..length {
+            let shape_handle: ShapeHandle = self.read()?;
+            let pos: GridPos = self.read()?;
+            let network_id: NetworkId = self.read()?;
+            shapes.push((shape_handle, pos, network_id));
         }
 
-        data.into_boxed_slice()
+        Ok(shapes)
     }
 }

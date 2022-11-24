@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
 use common::events::{PlayerConnected, PlayerDisconnected, InitialState};
-use common::grid::Grid;
 use common::player::Player;
+use common::shape::Shapes;
 
-use crate::building::spawn_cube;
+use crate::building::spawn_shape;
 use crate::connection_state::ConnectionState;
 
 pub fn player_connected(
@@ -36,23 +36,23 @@ pub fn initial_state_setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut connection_state: ResMut<ConnectionState>,
     mut initial_state_reader: EventReader<InitialState>,
-    mut grid_query: Query<&mut Grid>
+    shapes: Res<Shapes>
 ) {
-    if initial_state_reader.is_empty() { return; }
-
-    let mut grid = match grid_query.get_single_mut() {
-        Ok(g) => g,
-        Err(_) => { return; }
-    };
-
     for initial_state in initial_state_reader.iter() {
         for player in initial_state.players.iter() {
             connection_state.add_player(player.clone());
         }
 
-        for pos in initial_state.grid_positions.iter() {
-            let block_id = spawn_cube(&mut commands, &mut meshes, &mut materials, *pos);
-            grid.set(pos, Some(block_id));
+        for (shape_handle, pos, network_id) in initial_state.shapes.iter() {
+            spawn_shape(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                &shapes,
+                *shape_handle,
+                Transform::from(pos),
+                *network_id
+            );
         }
     }
 }

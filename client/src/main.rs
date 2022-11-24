@@ -3,19 +3,21 @@ use std::time::Duration;
 use bevy::log::{Level, LogSettings};
 use bevy::prelude::*;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
+use common::predefined_shapes::add_hardcoded_shapes;
+use common::shape::Shapes;
 use iyes_loopless::prelude::*;
 use uflow::Client;
 
 mod building;
 mod camera;
 mod connection_state;
+mod mesh_generation;
 mod packet_handling;
 mod player_connection_event_systems;
 mod settings;
 
-use common::grid::Grid;
-use common::events::{PlaceBlockRequest, PlaceBlockCommand, DeleteBlockRequest, DeleteBlockCommand, PlayerConnected, PlayerDisconnected, InitialState};
-use crate::building::{build_request_events, place_blocks, delete_blocks, send_place_block_requests, send_delete_block_requests};
+use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand, PlayerConnected, PlayerDisconnected, InitialState};
+use crate::building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests};
 use crate::camera::{FreeCameraPlugin, FreeCamera};
 use crate::connection_state::ConnectionState;
 use crate::packet_handling::process_packets;
@@ -36,6 +38,9 @@ fn main() {
     let mut packet_process_stage = SystemStage::parallel();
     packet_process_stage.add_system(process_packets);
 
+    let mut shapes = Shapes::new();
+    add_hardcoded_shapes(&mut shapes);
+
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(settings::Settings::default())
@@ -51,27 +56,28 @@ fn main() {
         .add_plugins(DefaultPickingPlugins)
         .add_plugin(DebugCursorPickingPlugin)
         .insert_resource(connection_state)
+        .insert_resource(shapes)
         .add_stage_before(
             CoreStage::Update,
             NetworkStage,
             FixedTimestepStage::new(Duration::from_millis(16))
                 .with_stage(packet_process_stage)
         )
-        .add_event::<PlaceBlockRequest>()
-        .add_event::<PlaceBlockCommand>()
-        .add_event::<DeleteBlockRequest>()
-        .add_event::<DeleteBlockCommand>()
+        .add_event::<PlaceShapeRequest>()
+        .add_event::<PlaceShapeCommand>()
+        .add_event::<DeleteShapeRequest>()
+        .add_event::<DeleteShapeCommand>()
         .add_event::<PlayerConnected>()
         .add_event::<PlayerDisconnected>()
         .add_event::<InitialState>()
         .add_system(build_request_events)
         .add_system(send_place_block_requests)
         .add_system(send_delete_block_requests)
-        .add_system(place_blocks)
-        .add_system(delete_blocks)
+        .add_system(place_shapes)
+        .add_system(delete_shapes)
         .add_system(player_connected)
         .add_system(player_disconnected)
-        .add_system(initial_state_setup)
+        .add_system(initial_state_setup.run_on_event::<InitialState>())
         .run();
 }
 
@@ -88,8 +94,6 @@ fn setup(mut commands: Commands) {
     })
     .insert(FreeCamera)
     .insert_bundle(PickingCameraBundle::default());
-
-    commands.spawn().insert(Grid::new());
 }
 
 fn disconnect_on_esc(

@@ -8,18 +8,21 @@ use bevy::scene::ScenePlugin;
 use iyes_loopless::prelude::*;
 
 mod building_systems;
+mod network_id_generator;
 mod packet_handling;
 mod player_connection_event_systems;
 mod server_state;
 
-use building_systems::{send_place_block_commands, send_delete_block_commands};
-use common::grid::{Grid, GridPos};
-use common::events::{PlaceBlockRequest, PlaceBlockCommand, DeleteBlockRequest, DeleteBlockCommand, PlayerConnected, PlayerDisconnected};
-use player_connection_event_systems::{send_player_connected, send_player_disconnected};
+use building_systems::{send_place_shape_commands, send_delete_shape_commands};
+use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand, PlayerConnected, PlayerDisconnected};
+use common::shape::{Shapes, ShapeHandle, ShapeHandleId, ShapeHandleType};
+use common::predefined_shapes::add_hardcoded_shapes;
 
-use crate::building_systems::{confirm_place_block_requests, confirm_delete_block_requests};
-use crate::packet_handling::process_packets;
-use crate::server_state::ServerState;
+use building_systems::{confirm_place_shape_requests, confirm_delete_shape_requests};
+use packet_handling::process_packets;
+use server_state::ServerState;
+use network_id_generator::NetworkIdGenerator;
+use player_connection_event_systems::{send_player_connected, send_player_disconnected};
 
 #[derive(StageLabel)]
 struct NetworkStage;
@@ -36,6 +39,9 @@ fn main() {
     let mut packet_process_stage = SystemStage::parallel();
     packet_process_stage.add_system(process_packets);
 
+    let mut shapes = Shapes::new();
+    add_hardcoded_shapes(&mut shapes);
+
     App::new()
         .add_plugins(MinimalPlugins)
         .insert_resource(LogSettings {
@@ -48,12 +54,13 @@ fn main() {
         .add_plugin(DiagnosticsPlugin)
         .add_plugin(AssetPlugin)
         .add_plugin(ScenePlugin)
-        .add_startup_system(setup)
         .insert_resource(server_state)
-        .add_event::<PlaceBlockRequest>()
-        .add_event::<PlaceBlockCommand>()
-        .add_event::<DeleteBlockRequest>()
-        .add_event::<DeleteBlockCommand>()
+        .insert_resource(NetworkIdGenerator::new())
+        .insert_resource(shapes)
+        .add_event::<PlaceShapeRequest>()
+        .add_event::<PlaceShapeCommand>()
+        .add_event::<DeleteShapeRequest>()
+        .add_event::<DeleteShapeCommand>()
         .add_event::<PlayerConnected>()
         .add_event::<PlayerDisconnected>()
         .add_stage_before(
@@ -62,17 +69,23 @@ fn main() {
             FixedTimestepStage::new(Duration::from_millis(16))
                 .with_stage(packet_process_stage)
         )
-        .add_system(confirm_place_block_requests)
-        .add_system(confirm_delete_block_requests)
-        .add_system(send_place_block_commands)
-        .add_system(send_delete_block_commands)
+        .add_startup_system(setup)
+        .add_system(confirm_place_shape_requests)
+        .add_system(confirm_delete_shape_requests)
+        .add_system(send_place_shape_commands)
+        .add_system(send_delete_shape_commands)
         .add_system(send_player_connected)
         .add_system(send_player_disconnected)
         .run();
 }
 
-fn setup(mut commands: Commands) {
-    let mut grid = Grid::new();
-    grid.set(&GridPos::new(0, 0, 0), Some(commands.spawn().id()));
-    commands.spawn().insert(grid);
+fn setup(mut commands: Commands, mut network_id_generator: ResMut<NetworkIdGenerator>) {
+    let shape_handle = ShapeHandle::new(ShapeHandleId::from(0), ShapeHandleType::ReadOnly);
+    let network_id = network_id_generator.generate();
+    let transform = Transform::from_xyz(0.0, 0.0, 0.0);
+
+    commands.spawn()
+        .insert(shape_handle)
+        .insert(network_id)
+        .insert(transform);
 }

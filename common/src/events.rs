@@ -1,79 +1,91 @@
 use crate::grid::GridPos;
+use crate::network_id::NetworkId;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
 use crate::player::Player;
+use crate::shape::{ShapeHandle, ShapeHandleId};
 
-pub struct PlaceBlockRequest(pub GridPos);
+pub struct PlaceShapeRequest(pub ShapeHandleId, pub GridPos);
 
-impl TryFrom<Packet> for PlaceBlockRequest {
+impl TryFrom<Packet> for PlaceShapeRequest {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
+        let shape_handle_id: ShapeHandleId = packet.read()?;
         let pos: GridPos = packet.read()?;
-        Ok(Self(pos))
+        Ok(Self(shape_handle_id, pos))
     }
 }
 
-impl From<&PlaceBlockRequest> for Packet {
-    fn from(place_block_request: &PlaceBlockRequest) -> Self {
-        let mut packet = Packet::new(PacketType::PlaceBlock);
-        packet.write(place_block_request.0);
+impl From<&PlaceShapeRequest> for Packet {
+    fn from(place_shape_request: &PlaceShapeRequest) -> Self {
+        let mut packet = Packet::new(PacketType::PlaceShape);
+        packet.write(place_shape_request.0);
+        packet.write(place_shape_request.1);
         packet
     }
 }
 
-pub struct PlaceBlockCommand(pub GridPos);
+pub struct PlaceShapeCommand {
+    pub shape_handle_id: ShapeHandleId,
+    pub pos: GridPos,
+    pub network_id: NetworkId
+}
 
-impl TryFrom<Packet> for PlaceBlockCommand {
+impl TryFrom<Packet> for PlaceShapeCommand {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
+        let shape_id: ShapeHandleId = packet.read()?;
         let pos: GridPos = packet.read()?;
-        Ok(Self(pos))
+        let network_id: NetworkId = packet.read()?;
+        Ok(Self { shape_handle_id: shape_id, pos, network_id })
     }
 }
 
-impl From<&PlaceBlockCommand> for Packet {
-    fn from(place_block_command: &PlaceBlockCommand) -> Self {
-        let mut packet = Packet::new(PacketType::PlaceBlock);
-        packet.write(place_block_command.0);
+impl From<&PlaceShapeCommand> for Packet {
+    fn from(place_shape_command: &PlaceShapeCommand) -> Self {
+        let mut packet = Packet::new(PacketType::PlaceShape);
+        packet.write(place_shape_command.shape_handle_id);
+        packet.write(place_shape_command.pos);
+        packet.write(place_shape_command.network_id);
         packet
     }
 }
 
-pub struct DeleteBlockRequest(pub GridPos);
+pub struct DeleteShapeRequest(pub NetworkId);
 
-impl TryFrom<Packet> for DeleteBlockRequest {
+impl TryFrom<Packet> for DeleteShapeRequest {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
-        let pos: GridPos = packet.read()?;
-        Ok(Self(pos))
+        let network_id: NetworkId = packet.read()?;
+        Ok(Self(network_id))
     }
 }
 
-impl From<&DeleteBlockRequest> for Packet {
-    fn from(delete_block_request: &DeleteBlockRequest) -> Self {
-        let mut packet = Packet::new(PacketType::DeleteBlock);
+impl From<&DeleteShapeRequest> for Packet {
+    fn from(delete_block_request: &DeleteShapeRequest) -> Self {
+        let mut packet = Packet::new(PacketType::DeleteShape);
         packet.write(delete_block_request.0);
         packet
     }
 }
 
-pub struct DeleteBlockCommand(pub GridPos);
+pub struct DeleteShapeCommand(pub NetworkId);
 
-impl TryFrom<Packet> for DeleteBlockCommand {
+impl TryFrom<Packet> for DeleteShapeCommand {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
-        let pos: GridPos = packet.read()?;
-        Ok(Self(pos))
+        let id: NetworkId = packet.read()?;
+        Ok(Self(id))
     }
 }
 
-impl From<&DeleteBlockCommand> for Packet {
-    fn from(delete_block_command: &DeleteBlockCommand) -> Self {
-        let mut packet = Packet::new(PacketType::DeleteBlock);
-        packet.write(delete_block_command.0);
+impl From<&DeleteShapeCommand> for Packet {
+    fn from(delete_shape_command: &DeleteShapeCommand) -> Self {
+        let mut packet = Packet::new(PacketType::DeleteShape);
+        packet.write(delete_shape_command.0);
         packet
     }
 }
@@ -123,7 +135,7 @@ impl From<&PlayerDisconnected> for Packet {
 
 pub struct InitialState {
     pub players: Vec<Player>,
-    pub grid_positions: Vec<GridPos>,
+    pub shapes: Vec<(ShapeHandle, GridPos, NetworkId)>,
 }
 
 impl TryFrom<Packet> for InitialState {
@@ -131,8 +143,8 @@ impl TryFrom<Packet> for InitialState {
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let players: Vec<Player> = packet.read()?;
-        let grid_positions: Vec<GridPos> = packet.read()?;
-        Ok(Self { players, grid_positions })
+        let shapes: Vec<(ShapeHandle, GridPos, NetworkId)> = packet.read()?;
+        Ok(Self { players, shapes })
     }
 }
 
@@ -140,7 +152,7 @@ impl From<&InitialState> for Packet {
     fn from(initial_state: &InitialState) -> Self {
         let mut packet = Packet::new(PacketType::InitialState);
         packet.write(&initial_state.players);
-        packet.write(&initial_state.grid_positions);
+        packet.write(&initial_state.shapes);
         packet
     }
 }

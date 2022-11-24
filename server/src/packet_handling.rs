@@ -1,15 +1,15 @@
 use bevy::prelude::*;
 use uflow::Event::*;
 
-use common::events::{PlaceBlockRequest, DeleteBlockRequest, PlayerConnected, PlayerDisconnected};
+use common::events::{PlaceShapeRequest, DeleteShapeRequest, PlayerConnected, PlayerDisconnected};
 use common::packets::{Packet, PacketType};
 
 use crate::server_state::ServerState;
 
 pub fn process_packets(
     mut state: ResMut<ServerState>,
-    mut place_block_request_writer: EventWriter<PlaceBlockRequest>,
-    mut delete_block_request_writer: EventWriter<DeleteBlockRequest>,
+    mut place_block_request_writer: EventWriter<PlaceShapeRequest>,
+    mut delete_block_request_writer: EventWriter<DeleteShapeRequest>,
     mut client_connected_writer: EventWriter<PlayerConnected>,
     mut client_disconnected_writer: EventWriter<PlayerDisconnected>
 ) {
@@ -59,12 +59,12 @@ pub fn process_packets(
 
 fn generate_events(
     packet: Packet,
-    place_block_writer: &mut EventWriter<PlaceBlockRequest>,
-    delete_block_writer: &mut EventWriter<DeleteBlockRequest>
+    place_block_writer: &mut EventWriter<PlaceShapeRequest>,
+    delete_block_writer: &mut EventWriter<DeleteShapeRequest>
 ) {
     match packet.packet_type() {
-        PacketType::PlaceBlock => {
-            match PlaceBlockRequest::try_from(packet) {
+        PacketType::PlaceShape => {
+            match PlaceShapeRequest::try_from(packet) {
                 Ok(place_block_request) => {
                     place_block_writer.send(place_block_request);
                 },
@@ -73,8 +73,8 @@ fn generate_events(
                 }
             }
         },
-        PacketType::DeleteBlock => {
-            match DeleteBlockRequest::try_from(packet) {
+        PacketType::DeleteShape => {
+            match DeleteShapeRequest::try_from(packet) {
                 Ok(delete_block_request) => {
                     delete_block_writer.send(delete_block_request);
                 },

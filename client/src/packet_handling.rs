@@ -2,15 +2,15 @@ use bevy::app::AppExit;
 use bevy::prelude::*;
 use uflow::Event::*;
 
-use common::events::{PlaceBlockCommand, DeleteBlockCommand, PlayerConnected, PlayerDisconnected, InitialState};
+use common::events::{PlaceShapeCommand, DeleteShapeCommand, PlayerConnected, PlayerDisconnected, InitialState};
 use common::packets::{Packet, PacketType};
 
 use crate::connection_state::ConnectionState;
 
 pub fn process_packets(
     mut state: ResMut<ConnectionState>,
-    mut place_block_command_writer: EventWriter<PlaceBlockCommand>,
-    mut delete_block_command_writer: EventWriter<DeleteBlockCommand>,
+    mut place_block_command_writer: EventWriter<PlaceShapeCommand>,
+    mut delete_block_command_writer: EventWriter<DeleteShapeCommand>,
     mut player_connected_writer: EventWriter<PlayerConnected>,
     mut player_disconnected_writer: EventWriter<PlayerDisconnected>,
     mut app_exit_writer: EventWriter<AppExit>,
@@ -54,15 +54,15 @@ pub fn process_packets(
 
 fn generate_events(
     packet: Packet,
-    place_black_command_writer: &mut EventWriter<PlaceBlockCommand>,
-    delete_block_command_writer: &mut EventWriter<DeleteBlockCommand>,
+    place_black_command_writer: &mut EventWriter<PlaceShapeCommand>,
+    delete_block_command_writer: &mut EventWriter<DeleteShapeCommand>,
     player_connected_writer: &mut EventWriter<PlayerConnected>,
     player_disconnected_writer: &mut EventWriter<PlayerDisconnected>,
     initial_state_writer: &mut EventWriter<InitialState>
 ) {
     match packet.packet_type() {
-        PacketType::PlaceBlock => {
-            match PlaceBlockCommand::try_from(packet) {
+        PacketType::PlaceShape => {
+            match PlaceShapeCommand::try_from(packet) {
                 Ok(place_block_command) => {
                     place_black_command_writer.send(place_block_command);
                 },
@@ -71,8 +71,8 @@ fn generate_events(
                 }
             }
         },
-        PacketType::DeleteBlock => {
-            match DeleteBlockCommand::try_from(packet) {
+        PacketType::DeleteShape => {
+            match DeleteShapeCommand::try_from(packet) {
                 Ok(delete_block_command) => {
                     delete_block_command_writer.send(delete_block_command);
                 },
