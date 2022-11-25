@@ -3,6 +3,7 @@ use std::time::Duration;
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
+use bevy_inspector_egui::WorldInspectorPlugin;
 use common::predefined_shapes::add_hardcoded_shapes;
 use common::shape::Shapes;
 use iyes_loopless::prelude::*;
@@ -54,6 +55,7 @@ fn main() {
         .add_system(disconnect_on_esc)
         .add_plugins(DefaultPickingPlugins)
         .add_plugin(DebugCursorPickingPlugin)
+        .add_plugin(WorldInspectorPlugin::new())
         .insert_resource(connection_state)
         .insert_resource(shapes)
         .add_stage_before(
