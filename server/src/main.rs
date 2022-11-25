@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::asset::AssetPlugin;
 use bevy::diagnostic::DiagnosticsPlugin;
-use bevy::log::{LogSettings, Level};
+use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 use iyes_loopless::prelude::*;
@@ -44,15 +44,14 @@ fn main() {
 
     App::new()
         .add_plugins(MinimalPlugins)
-        .insert_resource(LogSettings {
+        .add_plugin(LogPlugin {
             level: Level::DEBUG,
             filter: String::new()
         })
-        .add_plugin(bevy::log::LogPlugin)
         .add_plugin(TransformPlugin)
         .add_plugin(HierarchyPlugin)
         .add_plugin(DiagnosticsPlugin)
-        .add_plugin(AssetPlugin)
+        .add_plugin(AssetPlugin::default())
         .add_plugin(ScenePlugin)
         .insert_resource(server_state)
         .insert_resource(NetworkIdGenerator::new())
@@ -66,7 +65,7 @@ fn main() {
         .add_stage_before(
             CoreStage::Update,
             NetworkStage,
-            FixedTimestepStage::new(Duration::from_millis(16))
+            FixedTimestepStage::new(Duration::from_millis(16), "network_stage")
                 .with_stage(packet_process_stage)
         )
         .add_startup_system(setup)
@@ -84,7 +83,7 @@ fn setup(mut commands: Commands, mut network_id_generator: ResMut<NetworkIdGener
     let network_id = network_id_generator.generate();
     let transform = Transform::from_xyz(0.0, 0.0, 0.0);
 
-    commands.spawn()
+    commands.spawn_empty()
         .insert(shape_handle)
         .insert(network_id)
         .insert(transform);

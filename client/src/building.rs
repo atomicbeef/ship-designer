@@ -1,5 +1,5 @@
 use bevy::input::mouse::MouseButton;
-use bevy_mod_picking::{PickableBundle, PickingRaycastSet, RayCastSource};
+use bevy_mod_picking::{PickableBundle, PickingRaycastSet, RaycastSource};
 use bevy::prelude::*;
 use common::network_id::NetworkId;
 use uflow::SendMode;
@@ -17,12 +17,12 @@ pub fn build_request_events(
     keys: Res<Input<KeyCode>>,
     mut place_shape_request_writer: EventWriter<PlaceShapeRequest>,
     mut delete_shape_request_writer: EventWriter<DeleteShapeRequest>,
-    intersection_query: Query<&RayCastSource<PickingRaycastSet>>,
+    intersection_query: Query<&RaycastSource<PickingRaycastSet>>,
     transform_query: Query<&Transform>,
     network_id_query: Query<&NetworkId>
 ) {
     if mouse_buttons.just_pressed(MouseButton::Left) {
-        let intersection_data = intersection_query.iter().next().unwrap().intersect_top();
+        let intersection_data = intersection_query.iter().next().unwrap().get_nearest_intersection();
         if let Some(data) = intersection_data {
             // Block deletion
             if keys.pressed(KeyCode::LAlt) {
@@ -73,7 +73,7 @@ pub fn spawn_shape(
     let shape = shapes.get(&shape_handle).unwrap();
     let mesh = generate_shape_mesh(shape);
 
-    commands.spawn_bundle(PbrBundle {
+    commands.spawn(PbrBundle {
             mesh: meshes.add(mesh),
             material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
             transform: transform,
@@ -81,7 +81,7 @@ pub fn spawn_shape(
         })
         .insert(shape_handle)
         .insert(network_id)
-        .insert_bundle(PickableBundle::default())
+        .insert(PickableBundle::default())
         .id()
 }
 

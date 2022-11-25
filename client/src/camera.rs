@@ -1,10 +1,11 @@
 use bevy::ecs::event::EventReader;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
+use bevy::window::CursorGrabMode;
 
 use crate::settings::Settings;
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct Orientation {
     pitch: f32,
     yaw: f32,
@@ -52,9 +53,12 @@ fn camera_rotate(
     if let Some(window) = primary_window {
         for mut transform in query.iter_mut() {
             for ev in motion_evr.iter() {
-                if window.cursor_locked() {
-                    state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window.height()).to_radians();
-                    state.yaw -= (settings.mouse_sensitivity * ev.delta.x * window.width()).to_radians();
+                match window.cursor_grab_mode() {
+                    CursorGrabMode::None => {},
+                    CursorGrabMode::Confined | CursorGrabMode::Locked => {
+                        state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window.height()).to_radians();
+                        state.yaw -= (settings.mouse_sensitivity * ev.delta.x * window.width()).to_radians();
+                    }
                 }
     
                 transform.rotation = Quat::from_axis_angle(Vec3::Y, state.yaw) * Quat::from_axis_angle(Vec3::X, state.pitch);
@@ -71,11 +75,16 @@ fn cursor_grab(
     if let Some(window) = primary_window {
         // Lock and hide the cursor if RMB is pressed
         let rmb_pressed = mouse_button_input.pressed(MouseButton::Right);
-        if rmb_pressed && !window.cursor_locked() {
-            window.set_cursor_lock_mode(true);
+        let cursor_locked = match window.cursor_grab_mode() {
+            CursorGrabMode::None => false,
+            CursorGrabMode::Confined | CursorGrabMode::Locked => true
+        };
+        
+        if rmb_pressed && !cursor_locked {
+            window.set_cursor_grab_mode(CursorGrabMode::Confined);
             window.set_cursor_visibility(false);
-        } else if !rmb_pressed && window.cursor_locked() {
-            window.set_cursor_lock_mode(false);
+        } else if !rmb_pressed && cursor_locked {
+            window.set_cursor_grab_mode(CursorGrabMode::None);
             window.set_cursor_visibility(true);
         }
     }

@@ -1,8 +1,9 @@
-use bevy::utils::hashbrown::HashMap;
+use bevy::{utils::hashbrown::HashMap, prelude::Resource};
 use uflow::{Client, Peer};
 
 use common::player::Player;
 
+#[derive(Resource)]
 pub struct ConnectionState {
     pub client: Client,
     pub server: Peer,

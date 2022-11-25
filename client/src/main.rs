@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::log::{Level, LogSettings};
+use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
 use common::predefined_shapes::add_hardcoded_shapes;
@@ -44,11 +44,10 @@ fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(settings::Settings::default())
-        .insert_resource(LogSettings {
-            level: Level::WARN,
-            filter: "wgpu=error".to_string()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(LogPlugin {
+                level: Level::WARN,
+                filter: "wgpu=error".to_string()
+        }))
         .add_plugin(FreeCameraPlugin)
         .add_startup_system(set_window_title)
         .add_startup_system(setup)
@@ -60,7 +59,7 @@ fn main() {
         .add_stage_before(
             CoreStage::Update,
             NetworkStage,
-            FixedTimestepStage::new(Duration::from_millis(16))
+            FixedTimestepStage::new(Duration::from_millis(16), "network_stage")
                 .with_stage(packet_process_stage)
         )
         .add_event::<PlaceShapeRequest>()
@@ -88,12 +87,12 @@ fn set_window_title(mut windows: ResMut<Windows>) {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn_bundle(Camera3dBundle {
+    commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     })
     .insert(FreeCamera)
-    .insert_bundle(PickingCameraBundle::default());
+    .insert(PickingCameraBundle::default());
 }
 
 fn disconnect_on_esc(

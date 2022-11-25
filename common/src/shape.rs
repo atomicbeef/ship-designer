@@ -1,4 +1,4 @@
-use bevy::{prelude::Component, utils::HashMap};
+use bevy::{prelude::{Component, Resource}, utils::HashMap};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::materials::Material;
@@ -87,6 +87,7 @@ impl ShapeHandle {
     }
 }
 
+#[derive(Resource)]
 pub struct Shapes {
     shapes: HashMap<ShapeHandleId, Shape>,
     current_shape_id: u32

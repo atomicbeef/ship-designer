@@ -1,3 +1,6 @@
+use bevy::prelude::Resource;
+
+#[derive(Resource)]
 pub struct Settings {
     pub mouse_sensitivity: f32,
     pub camera_speed: f32,

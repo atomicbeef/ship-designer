@@ -17,7 +17,7 @@ pub fn spawn_shape(
     transform: Transform,
     network_id: NetworkId
 ) -> Entity {
-    commands.spawn()
+    commands.spawn_empty()
         .insert(shape_handle)
         .insert(network_id)
         .insert(transform)

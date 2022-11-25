@@ -1,5 +1,7 @@
+use bevy::prelude::Resource;
 use common::network_id::NetworkId;
 
+#[derive(Resource)]
 pub struct NetworkIdGenerator {
     current_id: u32
 }

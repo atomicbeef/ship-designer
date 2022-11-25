@@ -1,8 +1,9 @@
-use bevy::utils::hashbrown::{hash_map, HashMap};
+use bevy::{utils::hashbrown::{hash_map, HashMap}, prelude::Resource};
 use uflow::{Server, Peer};
 
 use common::player::Player;
 
+#[derive(Resource)]
 pub struct ServerState {
     pub server: Server,
     last_player_id: u8,
