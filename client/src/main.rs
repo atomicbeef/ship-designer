@@ -4,6 +4,7 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
 use bevy_inspector_egui::WorldInspectorPlugin;
+use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 use uflow::Client;
 
@@ -56,6 +57,8 @@ fn main() {
         .add_plugins(DefaultPickingPlugins)
         .add_plugin(DebugCursorPickingPlugin)
         .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(connection_state)
         .insert_resource(Shapes::new())
         .insert_resource(MeshHandles::new())
