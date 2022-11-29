@@ -11,6 +11,7 @@ use common::shape::{ShapeHandle, Shapes, ShapeHandleId, ShapeHandleType};
 
 use crate::connection_state::ConnectionState;
 use crate::mesh_generation::generate_shape_mesh;
+use crate::meshes::MeshHandles;
 
 pub fn build_request_events(
     mouse_buttons: Res<Input<MouseButton>>,
@@ -63,6 +64,7 @@ pub fn send_delete_block_requests(
 
 pub fn spawn_shape(
     commands: &mut Commands,
+    mesh_handles: &mut MeshHandles,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
     shapes: &Shapes,
@@ -70,11 +72,21 @@ pub fn spawn_shape(
     transform: Transform,
     network_id: NetworkId
 ) -> Entity {
-    let shape = shapes.get(&shape_handle).unwrap();
-    let mesh = generate_shape_mesh(shape);
+    let mesh_handle = match mesh_handles.get(&shape_handle) {
+        Some(mesh_handle) => mesh_handle.clone(),
+        None => {
+            let shape = shapes.get(&shape_handle).unwrap();
+            let mesh = generate_shape_mesh(shape);
+
+            let mesh_handle = meshes.add(mesh);
+            mesh_handles.add(shape_handle, mesh_handle.clone());
+
+            mesh_handle
+        }
+    };
 
     commands.spawn(PbrBundle {
-            mesh: meshes.add(mesh),
+            mesh: mesh_handle,
             material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
             transform: transform,
             ..Default::default()
@@ -88,6 +100,7 @@ pub fn spawn_shape(
 pub fn place_shapes(
     mut place_shape_command_reader: EventReader<PlaceShapeCommand>,
     mut commands: Commands,
+    mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     shapes: Res<Shapes>
@@ -96,6 +109,7 @@ pub fn place_shapes(
         let transform = Transform::from(event.pos);
         let entity = spawn_shape(
             &mut commands,
+            &mut mesh_handles,
             &mut meshes,
             &mut materials,
             &shapes,

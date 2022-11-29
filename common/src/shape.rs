@@ -60,14 +60,14 @@ impl From<u32> for ShapeHandleId {
     }
 }
 
-#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum ShapeHandleType {
     ReadOnly,
     Unique
 }
 
-#[derive(Clone, Copy, Component)]
+#[derive(Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct ShapeHandle {
     id: ShapeHandleId,
     handle_type: ShapeHandleType,

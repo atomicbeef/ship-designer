@@ -6,6 +6,7 @@ use common::shape::Shapes;
 
 use crate::building::spawn_shape;
 use crate::connection_state::ConnectionState;
+use crate::meshes::MeshHandles;
 
 pub fn player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
@@ -32,6 +33,7 @@ pub fn player_disconnected(
 
 pub fn initial_state_setup(
     mut commands: Commands,
+    mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut connection_state: ResMut<ConnectionState>,
@@ -46,6 +48,7 @@ pub fn initial_state_setup(
         for (shape_handle, pos, network_id) in initial_state.shapes.iter() {
             spawn_shape(
                 &mut commands,
+                &mut mesh_handles,
                 &mut meshes,
                 &mut materials,
                 &shapes,
