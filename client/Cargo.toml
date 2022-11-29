@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 common = { package = "ship-designer-common", path = "../common" }
-bevy = "0.9"
 bevy_mod_picking = "0.10"
 bevy_mod_raycast = "0.7"
 bevy_egui = "0.17"
@@ -15,3 +14,21 @@ bevy-inspector-egui = "0.14"
 uflow = "0.6"
 iyes_loopless = "0.9"
 num_enum = "0.5"
+
+[dependencies.bevy]
+version = "0.9"
+default-features = false
+features = [
+    "animation",
+    "bevy_asset",
+    "bevy_gltf",
+    "bevy_winit",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_sprite",
+    "bevy_pbr",
+    "png",
+    "hdr",
+    "x11",
+    "filesystem_watcher"
+]
