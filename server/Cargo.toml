@@ -7,8 +7,12 @@ edition = "2021"
 
 [dependencies]
 common = { package = "ship-designer-common", path = "../common" }
-bevy = { version = "0.9", default-features = false }
 uflow = "0.6"
 iyes_loopless = "0.9"
 num_enum = "0.5"
 bevy_rapier3d = { version = "0.19", features = [ "simd-stable" ] }
+
+[dependencies.bevy]
+version = "0.9"
+default-features = false
+features = ["bevy_scene"]

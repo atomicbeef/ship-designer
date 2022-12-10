@@ -4,6 +4,8 @@ use bevy::asset::AssetPlugin;
 use bevy::diagnostic::DiagnosticsPlugin;
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
+use bevy::render::mesh::MeshPlugin;
+use bevy::scene::ScenePlugin;
 use iyes_loopless::prelude::*;
 use bevy_rapier3d::prelude::*;
 
@@ -52,6 +54,8 @@ fn main() {
         .add_plugin(HierarchyPlugin)
         .add_plugin(DiagnosticsPlugin)
         .add_plugin(AssetPlugin::default())
+        .add_plugin(ScenePlugin)
+        .add_plugin(MeshPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .insert_resource(server_state)
         .insert_resource(NetworkIdGenerator::new())

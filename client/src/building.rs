@@ -6,11 +6,12 @@ use uflow::SendMode;
 
 use common::channels::Channel;
 use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::materials::Material;
 use common::packets::Packet;
 use common::shape::{ShapeHandle, Shapes, ShapeHandleId, ShapeHandleType};
 
 use crate::connection_state::ConnectionState;
-use crate::mesh_generation::generate_shape_mesh;
+use crate::mesh_generation::{RegenerateShapeMesh, generate_shape_mesh};
 use crate::meshes::MeshHandles;
 
 pub fn build_request_events(
@@ -19,21 +20,36 @@ pub fn build_request_events(
     mut place_shape_request_writer: EventWriter<PlaceShapeRequest>,
     mut delete_shape_request_writer: EventWriter<DeleteShapeRequest>,
     intersection_query: Query<&RaycastSource<PickingRaycastSet>>,
+    mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
+    mut shapes: ResMut<Shapes>,
+    mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
     transform_query: Query<&Transform>,
     network_id_query: Query<&NetworkId>
 ) {
     if mouse_buttons.just_pressed(MouseButton::Left) {
         let intersection_data = intersection_query.iter().next().unwrap().get_nearest_intersection();
-        if let Some(data) = intersection_data {
+        if let Some((entity, data)) = intersection_data {
             // Block deletion
             if keys.pressed(KeyCode::LAlt) {
-                let network_id = network_id_query.get(data.0).unwrap();
+                let network_id = network_id_query.get(entity).unwrap();
                 delete_shape_request_writer.send(DeleteShapeRequest(*network_id));
+            // Voxel deletion
+            } else if keys.pressed(KeyCode::LControl) {
+                if let Ok((shape_transform, mut shape_handle)) = voxel_intersection_query.get_mut(entity) {
+                    let inverse = shape_transform.affine().inverse();
+                    let voxel_pos = inverse.transform_point3(data.position());
+                    
+                    let shape = shapes.get_mut(&mut shape_handle).unwrap();
+
+                    shape.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
+
+                    regenerate_shape_mesh_writer.send(RegenerateShapeMesh(entity));
+                }
             // Block placement
             } else {
-                if let Ok(origin_shape_transform) = transform_query.get(data.0) {
+                if let Ok(origin_shape_transform) = transform_query.get(entity) {
                     let shape_handle_id = ShapeHandleId::from(0);
-                    let block_pos = (origin_shape_transform.translation + data.1.normal()).into();
+                    let block_pos = (origin_shape_transform.translation + data.normal()).into();
 
                     place_shape_request_writer.send(PlaceShapeRequest(shape_handle_id, block_pos));
                 }

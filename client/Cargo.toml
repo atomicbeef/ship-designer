@@ -26,6 +26,7 @@ features = [
     "bevy_winit",
     "bevy_render",
     "bevy_core_pipeline",
+    "bevy_scene",
     "bevy_sprite",
     "bevy_pbr",
     "png",

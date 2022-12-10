@@ -6,6 +6,7 @@ use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingC
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
+use mesh_generation::{RegenerateShapeMesh, regenerate_shape_mesh};
 use uflow::Client;
 
 use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand, PlayerConnected, PlayerDisconnected, InitialState};
@@ -75,11 +76,13 @@ fn main() {
         .add_event::<PlayerConnected>()
         .add_event::<PlayerDisconnected>()
         .add_event::<InitialState>()
+        .add_event::<RegenerateShapeMesh>()
         .add_system(build_request_events)
         .add_system(send_place_block_requests)
         .add_system(send_delete_block_requests)
         .add_system(place_shapes)
         .add_system(delete_shapes)
+        .add_system(regenerate_shape_mesh)
         .add_system(player_connected)
         .add_system(player_disconnected)
         .add_system(initial_state_setup.run_on_event::<InitialState>())

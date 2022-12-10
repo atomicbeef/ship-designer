@@ -2,8 +2,10 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
-use common::shape::Shape;
+use common::shape::{Shape, ShapeHandle, Shapes};
 use common::materials::Material;
+
+use crate::meshes::MeshHandles;
 
 // Voxels are 10 cm^3
 const VOXEL_SIZE: f32 = 0.1;
@@ -120,4 +122,29 @@ pub fn generate_shape_mesh(
     mesh.set_indices(Some(Indices::U32(triangles)));
 
     mesh
+}
+
+pub struct RegenerateShapeMesh(pub Entity);
+
+pub fn regenerate_shape_mesh(
+    mut regenerate_shape_mesh_reader: EventReader<RegenerateShapeMesh>,
+    shape_handle_query: Query<&ShapeHandle>,
+    shapes: Res<Shapes>,
+    mut mesh_handles: ResMut<MeshHandles>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut commands: Commands
+) {
+    for request in regenerate_shape_mesh_reader.iter() {
+        if let Ok(shape_handle) = shape_handle_query.get(request.0) {
+            if let Some(shape) = shapes.get(shape_handle) {
+                let mesh = generate_shape_mesh(shape);
+                let mesh_handle = meshes.add(mesh);
+
+                mesh_handles.update(*shape_handle, mesh_handle.clone());
+                
+                commands.entity(request.0).remove::<Handle<Mesh>>();
+                commands.entity(request.0).insert(mesh_handle);
+            }
+        }
+    }
 }

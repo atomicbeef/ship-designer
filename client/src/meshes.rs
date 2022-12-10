@@ -21,4 +21,8 @@ impl MeshHandles {
     pub fn add(&mut self, shape_handle: ShapeHandle, mesh_handle: Handle<Mesh>) {
         self.mesh_handles.insert(shape_handle, mesh_handle);
     }
+
+    pub fn update(&mut self, shape_handle: ShapeHandle, mesh_handle: Handle<Mesh>) {
+        self.mesh_handles.entry(shape_handle).and_modify(|e| *e = mesh_handle);
+    }
 }
