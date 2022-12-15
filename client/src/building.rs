@@ -36,8 +36,20 @@ pub fn build_request_events(
             // Voxel deletion
             } else if keys.pressed(KeyCode::LControl) {
                 if let Ok((shape_transform, mut shape_handle)) = voxel_intersection_query.get_mut(entity) {
+                    let transform_affine = shape_transform.affine();
                     let inverse = shape_transform.affine().inverse();
-                    let voxel_pos = inverse.transform_point3(data.position());
+                    
+                    let transform_matrix;
+                    if inverse.is_finite() {
+                        transform_matrix = inverse;
+                    } else {
+                        debug!("[Voxel deletion] Uninvertible transform matrix: {}", transform_affine);
+                        transform_matrix = transform_affine;
+                    }
+
+                    let voxel_pos = transform_matrix.transform_point3(data.position());
+                    debug!(?data);
+                    debug!(?voxel_pos);
                     
                     let shape = shapes.get_mut(&mut shape_handle).unwrap();
 
