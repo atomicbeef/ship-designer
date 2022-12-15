@@ -48,8 +48,8 @@ fn main() {
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(settings::Settings::default())
         .add_plugins(DefaultPlugins.set(LogPlugin {
-                level: Level::WARN,
-                filter: "wgpu=error".to_string()
+                level: Level::DEBUG,
+                filter: "wgpu=error,naga=error".to_string()
         }))
         .add_plugin(FreeCameraPlugin)
         .add_startup_system(set_window_title)
