@@ -1,12 +1,11 @@
 use bevy::prelude::*;
-use common::grid::GridPos;
 use common::packets::Packet;
 use uflow::SendMode;
 
 use common::channels::Channel;
-use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::network_id::NetworkId;
-use common::shape::{ShapeHandle, ShapeHandleType};
+use common::shape::ShapeHandle;
 
 use crate::network_id_generator::NetworkIdGenerator;
 use crate::server_state::ServerState;
@@ -28,27 +27,20 @@ pub fn confirm_place_shape_requests(
     mut place_shape_request_reader: EventReader<PlaceShapeRequest>,
     mut send_place_shape_writer: EventWriter<PlaceShapeCommand>,
     mut commands: Commands,
-    mut network_id_generator: ResMut<NetworkIdGenerator>,
-    transform_query: Query<&Transform, With<ShapeHandle>>
+    mut network_id_generator: ResMut<NetworkIdGenerator>
 ) {
-    'requests: for place_shape_request in place_shape_request_reader.iter() {
-        // Prevent shapes from being placed inside of each other
-        for transform in transform_query.iter() {
-            let grid_pos = GridPos::from(transform);
-            if grid_pos == place_shape_request.1 {
-                continue 'requests;
-            }
-        }
+    for place_shape_request in place_shape_request_reader.iter() {
+        // TODO: Prevent shapes from being placed inside of each other
 
         // Spawn shape
         let network_id = network_id_generator.generate();
-        let shape_handle = ShapeHandle::new(place_shape_request.0, ShapeHandleType::ReadOnly);
+        let shape_handle = ShapeHandle::new(place_shape_request.0);
         spawn_shape(&mut commands,  shape_handle, Transform::from(place_shape_request.1), network_id);
 
         send_place_shape_writer.send(PlaceShapeCommand {
-            shape_handle_id: place_shape_request.0,
+            shape_id: place_shape_request.0,
             network_id,
-            pos: place_shape_request.1
+            transform: place_shape_request.1
         });
     }
 }

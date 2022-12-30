@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use uflow::Event::*;
 
-use common::events::{PlaceShapeRequest, DeleteShapeRequest, PlayerConnected, PlayerDisconnected};
+use common::events::building::{PlaceShapeRequest, DeleteShapeRequest};
+use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
 use common::packets::{Packet, PacketType};
 
 use crate::server_state::ServerState;

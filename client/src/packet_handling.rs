@@ -2,7 +2,8 @@ use bevy::app::AppExit;
 use bevy::prelude::*;
 use uflow::Event::*;
 
-use common::events::{PlaceShapeCommand, DeleteShapeCommand, PlayerConnected, PlayerDisconnected, InitialState};
+use common::events::building::{PlaceShapeCommand, DeleteShapeCommand};
+use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::packets::{Packet, PacketType};
 
 use crate::connection_state::ConnectionState;

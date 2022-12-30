@@ -9,9 +9,10 @@ use iyes_loopless::prelude::*;
 use mesh_generation::{RegenerateShapeMesh, regenerate_shape_mesh};
 use uflow::Client;
 
-use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand, PlayerConnected, PlayerDisconnected, InitialState};
+use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::predefined_shapes::add_hardcoded_shapes;
-use common::shape::Shapes;
+use common::shape::{Shapes, ShapeHandle};
 
 mod building;
 mod camera;
@@ -86,6 +87,7 @@ fn main() {
         .add_system(player_connected)
         .add_system(player_disconnected)
         .add_system(initial_state_setup.run_on_event::<InitialState>())
+        .register_type::<ShapeHandle>()
         .run();
 }
 

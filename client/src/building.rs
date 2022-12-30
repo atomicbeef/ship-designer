@@ -2,13 +2,14 @@ use bevy::input::mouse::MouseButton;
 use bevy_mod_picking::{PickableBundle, PickingRaycastSet, RaycastSource};
 use bevy::prelude::*;
 use common::network_id::NetworkId;
+use common::shape_transform::ShapeTransform;
 use uflow::SendMode;
 
 use common::channels::Channel;
-use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::materials::Material;
 use common::packets::Packet;
-use common::shape::{ShapeHandle, Shapes, ShapeHandleId, ShapeHandleType};
+use common::shape::{ShapeHandle, Shapes, ShapeId};
 
 use crate::connection_state::ConnectionState;
 use crate::mesh_generation::{RegenerateShapeMesh, generate_shape_mesh};
@@ -60,10 +61,15 @@ pub fn build_request_events(
             // Block placement
             } else {
                 if let Ok(origin_shape_transform) = transform_query.get(entity) {
-                    let shape_handle_id = ShapeHandleId::from(0);
-                    let block_pos = (origin_shape_transform.translation + data.normal()).into();
+                    let shape_id = ShapeId::from(0);
+                    let translation = origin_shape_transform.translation + data.normal();
+                    let transform = ShapeTransform::from_xyz(
+                        translation.x as i16,
+                        translation.y as i16,
+                        translation.z as i16
+                    );
 
-                    place_shape_request_writer.send(PlaceShapeRequest(shape_handle_id, block_pos));
+                    place_shape_request_writer.send(PlaceShapeRequest(shape_id, transform));
                 }
             }
         }
@@ -107,7 +113,7 @@ pub fn spawn_shape(
             let mesh = generate_shape_mesh(shape);
 
             let mesh_handle = meshes.add(mesh);
-            mesh_handles.add(shape_handle, mesh_handle.clone());
+            mesh_handles.add(shape_handle.clone(), mesh_handle.clone());
 
             mesh_handle
         }
@@ -134,14 +140,14 @@ pub fn place_shapes(
     shapes: Res<Shapes>
 ) {
     for event in place_shape_command_reader.iter() {
-        let transform = Transform::from(event.pos);
+        let transform = Transform::from(event.transform);
         let entity = spawn_shape(
             &mut commands,
             &mut mesh_handles,
             &mut meshes,
             &mut materials,
             &shapes,
-            ShapeHandle::new(ShapeHandleId::from(0), ShapeHandleType::ReadOnly),
+            ShapeHandle::new(ShapeId::from(0)),
             transform,
             event.network_id
         );

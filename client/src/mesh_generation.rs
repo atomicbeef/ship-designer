@@ -140,7 +140,7 @@ pub fn regenerate_shape_mesh(
                 let mesh = generate_shape_mesh(shape);
                 let mesh_handle = meshes.add(mesh);
 
-                mesh_handles.update(*shape_handle, mesh_handle.clone());
+                mesh_handles.update(shape_handle.clone(), mesh_handle.clone());
                 
                 commands.entity(request.0).remove::<Handle<Mesh>>();
                 commands.entity(request.0).insert(mesh_handle);

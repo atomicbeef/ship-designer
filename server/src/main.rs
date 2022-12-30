@@ -16,8 +16,9 @@ mod player_connection_event_systems;
 mod server_state;
 
 use building_systems::{send_place_shape_commands, send_delete_shape_commands};
-use common::events::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand, PlayerConnected, PlayerDisconnected};
-use common::shape::{Shapes, ShapeHandle, ShapeHandleId, ShapeHandleType};
+use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
+use common::shape::{Shapes, ShapeHandle, ShapeId};
 use common::predefined_shapes::add_hardcoded_shapes;
 
 use building_systems::{confirm_place_shape_requests, confirm_delete_shape_requests};
@@ -83,7 +84,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, mut network_id_generator: ResMut<NetworkIdGenerator>) {
-    let shape_handle = ShapeHandle::new(ShapeHandleId::from(0), ShapeHandleType::ReadOnly);
+    let shape_handle = ShapeHandle::new(ShapeId::from(0));
     let network_id = network_id_generator.generate();
     let transform = Transform::from_xyz(0.0, 0.0, 0.0);
 
