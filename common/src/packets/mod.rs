@@ -70,9 +70,7 @@ impl Packet {
     }
 
     pub fn write_bytes(&mut self, bytes: &[u8]) {
-        for byte in bytes {
-            self.data.push(*byte);
-        }
+        self.data.extend_from_slice(bytes);
     }
 }
 
@@ -96,12 +94,10 @@ impl TryFrom<Box<[u8]>> for Packet {
 
 impl From<&Packet> for Box<[u8]> {
     fn from(packet: &Packet) -> Self {
-        let mut data: Vec<u8>= Vec::with_capacity(packet.data.len() + 1);
-        
+        let mut data: Vec<u8> = Vec::with_capacity(packet.data.len() + 1);
+
         data.push(packet.packet_type().into());
-        for byte in packet.data.iter() {
-            data.push(*byte);
-        }
+        data.extend_from_slice(&packet.data);
 
         data.into_boxed_slice()
     }

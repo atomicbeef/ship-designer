@@ -7,13 +7,14 @@ use common::network_id::NetworkId;
 use common::shape::{ShapeHandle, Shapes, ShapeNetworkRepr};
 use common::shape_transform::ShapeTransform;
 use common::packets::Packet;
-use common::player::Player;
+use common::player::{Player, Players};
 
 use crate::server_state::ServerState;
 
 pub fn send_player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
-    mut server_state: ResMut<ServerState>,
+    players: Res<Players>,
+    mut server_state: NonSendMut<ServerState>,
     shapes: Res<Shapes>,
     shape_query: Query<(&ShapeHandle, &Transform, &NetworkId)>
 ) {
@@ -21,8 +22,9 @@ pub fn send_player_connected(
         // Send new player connected packet to existing players
         let player_connected_packet = Packet::from(player_connected);
         
-        for peer in server_state.peers_mut() {
-            peer.send(
+        for player_id in players.ids() {
+            server_state.send_to_player(
+                *player_id,
                 (&player_connected_packet).into(),
                 Channel::PlayerConnectionEvents.into(),
                 SendMode::Reliable
@@ -30,7 +32,7 @@ pub fn send_player_connected(
         }
 
         // Send the current state of the world to the new player
-        let players: Vec<Player> = server_state.players().cloned().collect();
+        let players: Vec<Player> = players.players().cloned().collect();
 
         let mut shape_data: Vec<(ShapeNetworkRepr, ShapeTransform, NetworkId)> = Vec::new();
         for (shape_handle, transform, network_id) in shape_query.iter() {
@@ -55,30 +57,32 @@ pub fn send_player_connected(
         }
 
         let initial_state = InitialState { players, shapes: shape_data };
-
         let initial_state_packet = Packet::from(&initial_state);
-
-        if let Some(connected_peer) = server_state.peer_mut(player_connected.id) {
-            connected_peer.send(
-                (&initial_state_packet).into(),
-                Channel::ShapeCommands.into(),
-                SendMode::Reliable
-            );
-        }
+        
+        server_state.send_to_player(
+            player_connected.id,
+            (&initial_state_packet).into(),
+            Channel::ShapeCommands.into(),
+            SendMode::Reliable
+        );
     }
 }
 
 pub fn send_player_disconnected(
     mut player_disconnected_reader: EventReader<PlayerDisconnected>,
-    mut server_state: ResMut<ServerState>
+    players: Res<Players>,
+    mut server_state: NonSendMut<ServerState>
 ) {
     for disconnected_player in player_disconnected_reader.iter() {
-        server_state.remove_player(disconnected_player.0);
-
         let packet = Packet::from(disconnected_player);
 
-        for peer in server_state.peers_mut() {
-            peer.send((&packet).into(), Channel::PlayerConnectionEvents.into(), SendMode::Reliable);
+        for player_id in players.ids() {
+            server_state.send_to_player(
+                *player_id,
+                (&packet).into(),
+                Channel::PlayerConnectionEvents.into(),
+                SendMode::Reliable
+            );
         }
     }
 }

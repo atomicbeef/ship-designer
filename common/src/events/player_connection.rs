@@ -1,11 +1,11 @@
 use crate::network_id::NetworkId;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
-use crate::player::Player;
+use crate::player::{Player, PlayerId};
 use crate::shape::ShapeNetworkRepr;
 use crate::shape_transform::ShapeTransform;
 
 pub struct PlayerConnected {
-    pub id: u8,
+    pub id: PlayerId,
     pub name: String
 }
 
@@ -13,7 +13,7 @@ impl TryFrom<Packet> for PlayerConnected {
     type Error = PacketError;
     
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
-        let id = u8::deserialize(&mut packet)?;
+        let id = PlayerId::deserialize(&mut packet)?;
         let name = String::deserialize(&mut packet)?;
         Ok(Self { id, name })
     }
@@ -28,13 +28,13 @@ impl From<&PlayerConnected> for Packet {
     }
 }
 
-pub struct PlayerDisconnected(pub u8);
+pub struct PlayerDisconnected(pub PlayerId);
 
 impl TryFrom<Packet> for PlayerDisconnected {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
-        let id = u8::deserialize(&mut packet)?;
+        let id = PlayerId::deserialize(&mut packet)?;
         Ok(Self(id))
     }
 }

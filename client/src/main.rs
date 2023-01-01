@@ -5,9 +5,11 @@ use bevy::prelude::*;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
+use common::player::Players;
 use iyes_loopless::prelude::*;
 use mesh_generation::{RegenerateShapeMesh, regenerate_shape_mesh};
-use uflow::Client;
+use uflow::client::Client;
+use uflow::EndpointConfig;
 
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
@@ -34,13 +36,17 @@ use player_connection_event_systems::{player_connected, player_disconnected, ini
 struct NetworkStage;
 
 fn main() {
-    let mut client = Client::bind_any_ipv4().expect("Failed to bind socket!");
     let server_address = "127.0.0.1:36756";
-    let peer_config = uflow::EndpointConfig::default();
+    let client_config = uflow::client::Config {
+        endpoint_config: EndpointConfig {
+            active_timeout_ms: 3600000,
+            ..Default::default()
+        }
+    };
 
-    let server = client.connect(server_address, peer_config).expect("Failed to connect to server!");
+    let client = Client::connect(server_address, client_config).expect("Failed to connect to server!");
 
-    let connection_state = ConnectionState::new(client, server);
+    let connection_state = ConnectionState::new(client);
 
     let mut packet_process_stage = SystemStage::parallel();
     packet_process_stage.add_system(process_packets);
@@ -62,6 +68,7 @@ fn main() {
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(connection_state)
+        .insert_resource(Players::new())
         .insert_resource(Shapes::new())
         .insert_resource(MeshHandles::new())
         .add_stage_before(
@@ -122,9 +129,9 @@ fn setup(
 
 fn disconnect_on_esc(
     keys: Res<Input<KeyCode>>,
-    connection_state: ResMut<ConnectionState>
+    mut connection_state: ResMut<ConnectionState>
 ) {
     if keys.pressed(KeyCode::Escape) {
-        connection_state.server.disconnect();
+        connection_state.client.disconnect();
     }
 }

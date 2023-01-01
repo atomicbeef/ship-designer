@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.9", default-features = false }
-uflow = "0.6"
+uflow = { git = "https://github.com/atomicbeef/uflow", branch = "configurable-timeout" }
 num_enum = "0.5"
 thiserror = "1.0"

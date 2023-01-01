@@ -1,6 +1,6 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use uflow::Event::*;
+use uflow::client::{Event::*, ErrorType};
 
 use common::events::building::{PlaceShapeCommand, DeleteShapeCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
@@ -17,19 +17,13 @@ pub fn process_packets(
     mut app_exit_writer: EventWriter<AppExit>,
     mut initial_state_writer: EventWriter<InitialState>
 ) {
-    state.client.step();
-
-    for event in state.server.poll_events() {
+    for event in state.client.step() {
         match event {
             Connect => {
                 info!("Connected to server");
             },
             Disconnect => {
                 info!("Disconnected from server");
-                app_exit_writer.send(AppExit);
-            },
-            Timeout => {
-                info!("Connection to server timed out!");
                 app_exit_writer.send(AppExit);
             },
             Receive(packet_data) => {
@@ -46,6 +40,26 @@ pub fn process_packets(
                     },
                     Err(err) => {
                         warn!(?err);
+                    }
+                }
+            },
+            Error(error_type) => {
+                match error_type {
+                    ErrorType::Timeout => {
+                        error!("Connection to server timed out!");
+                        app_exit_writer.send(AppExit);
+                    },
+                    ErrorType::Version => {
+                        error!("Connection failed: protocol version mismatch!");
+                        app_exit_writer.send(AppExit);
+                    },
+                    ErrorType::Config => {
+                        error!("Connection failed: invalid endpoint configuration!");
+                        app_exit_writer.send(AppExit);
+                    },
+                    ErrorType::ServerFull => {
+                        error!("Connection failed: server full!");
+                        app_exit_writer.send(AppExit);
                     }
                 }
             }

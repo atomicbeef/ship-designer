@@ -82,7 +82,7 @@ pub fn send_place_block_requests(
 ) {
     for place_block_request in place_block_request_reader.iter() {
         let packet: Packet = place_block_request.into();
-        connection_state.server.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
+        connection_state.client.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
     }
 }
 
@@ -92,7 +92,7 @@ pub fn send_delete_block_requests(
 ) {
     for delete_block_request in delete_block_request_reader.iter() {
         let packet: Packet = delete_block_request.into();
-        connection_state.server.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
+        connection_state.client.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
     }
 }
 

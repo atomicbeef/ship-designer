@@ -11,7 +11,7 @@ bevy_mod_picking = "0.10"
 bevy_mod_raycast = "0.7"
 bevy_egui = "0.17"
 bevy-inspector-egui = "0.14"
-uflow = "0.6"
+uflow = { git = "https://github.com/atomicbeef/uflow", branch = "configurable-timeout" }
 iyes_loopless = "0.9"
 num_enum = "0.5"
 bevy_rapier3d = { version = "0.19", features = [ "debug-render", "simd-stable" ] }

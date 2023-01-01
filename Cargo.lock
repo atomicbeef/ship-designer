@@ -3044,9 +3044,8 @@ checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
 
 [[package]]
 name = "uflow"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c25479d4e9d3900b8eee75068a5ef5dce9b06dfaa16d9da8b123cefc7532e34"
+version = "0.7.0"
+source = "git+https://github.com/atomicbeef/uflow?branch=configurable-timeout#d662963314ee0e24c24b32b254b278bb94089311"
 dependencies = [
  "rand",
 ]

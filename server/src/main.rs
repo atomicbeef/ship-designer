@@ -6,6 +6,7 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
+use common::player::Players;
 use iyes_loopless::prelude::*;
 use bevy_rapier3d::prelude::*;
 
@@ -31,14 +32,6 @@ use player_connection_event_systems::{send_player_connected, send_player_disconn
 struct NetworkStage;
 
 fn main() {
-    let address = "127.0.0.1:36756";
-    let max_peer_count = 12;
-    let peer_config = uflow::EndpointConfig::default();
-    let server = uflow::Server::bind(address, max_peer_count, peer_config)
-        .expect(&format!("Failed to bind on {}", address));
-    
-    let server_state = ServerState::new(server);
-
     let mut packet_process_stage = SystemStage::parallel();
     packet_process_stage.add_system(process_packets);
 
@@ -58,9 +51,9 @@ fn main() {
         .add_plugin(ScenePlugin)
         .add_plugin(MeshPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .insert_resource(server_state)
         .insert_resource(NetworkIdGenerator::new())
         .insert_resource(shapes)
+        .insert_resource(Players::new())
         .add_event::<PlaceShapeRequest>()
         .add_event::<PlaceShapeCommand>()
         .add_event::<DeleteShapeRequest>()
@@ -73,6 +66,7 @@ fn main() {
             FixedTimestepStage::new(Duration::from_millis(16), "network_stage")
                 .with_stage(packet_process_stage)
         )
+        .add_startup_system(setup_server)
         .add_startup_system(setup)
         .add_system(confirm_place_shape_requests)
         .add_system(confirm_delete_shape_requests)
@@ -81,6 +75,26 @@ fn main() {
         .add_system(send_player_connected)
         .add_system(send_player_disconnected)
         .run();
+}
+
+fn setup_server(world: &mut World) {
+    let address = "127.0.0.1:36756";
+    let server_config = uflow::server::Config {
+        max_total_connections: 20,
+        max_active_connections: 10,
+        enable_handshake_errors: false,
+        endpoint_config: uflow::EndpointConfig {
+            active_timeout_ms: 3600000,
+            ..Default::default()
+        }
+    };
+
+    let server = uflow::server::Server::bind(address, server_config)
+        .expect(&format!("Failed to bind on {}", address));
+    
+    let server_state = ServerState::new(server);
+
+    world.insert_non_send_resource(server_state);
 }
 
 fn setup(mut commands: Commands, mut network_id_generator: ResMut<NetworkIdGenerator>) {

@@ -1,10 +1,11 @@
 use bevy::prelude::*;
-use common::packets::Packet;
+use common::player::Players;
 use uflow::SendMode;
 
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::network_id::NetworkId;
+use common::packets::Packet;
 use common::shape::ShapeHandle;
 
 use crate::network_id_generator::NetworkIdGenerator;
@@ -63,25 +64,39 @@ pub fn confirm_delete_shape_requests(
 }
 
 pub fn send_place_shape_commands(
-    mut server_state: ResMut<ServerState>,
+    mut server_state: NonSendMut<ServerState>,
+    players: Res<Players>,
     mut send_place_shape_reader: EventReader<PlaceShapeCommand>
 ) {
     for place_shape_command in send_place_shape_reader.iter() {
-        for peer in server_state.peers_mut() {
-            let packet: Packet = place_shape_command.into();
-            peer.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
+        let packet = Packet::from(place_shape_command);
+
+        for player_id in players.ids() {
+            server_state.send_to_player(
+                *player_id,
+                (&packet).into(),
+                Channel::ShapeCommands.into(),
+                SendMode::Reliable
+            );
         }
     }
 }
 
 pub fn send_delete_shape_commands(
-    mut server_state: ResMut<ServerState>,
+    mut server_state: NonSendMut<ServerState>,
+    players: Res<Players>,
     mut send_delete_shape_reader: EventReader<DeleteShapeCommand>
 ) {
     for delete_shape_command in send_delete_shape_reader.iter() {
-        for peer in server_state.peers_mut() {
-            let packet: Packet = delete_shape_command.into();
-            peer.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
+        let packet = Packet::from(delete_shape_command);
+
+        for player_id in players.ids() {
+            server_state.send_to_player(
+                *player_id,
+                (&packet).into(),
+                Channel::ShapeCommands.into(),
+                SendMode::Reliable
+            );
         }
     }
 }
