@@ -31,7 +31,7 @@ fn camera_move(
                 KeyCode::D => velocity += transform.right(),
                 KeyCode::A => velocity += transform.left(),
                 KeyCode::Space => velocity += Vec3::Y,
-                KeyCode::LShift => velocity -= Vec3::Y,
+                KeyCode::C => velocity -= Vec3::Y,
                 _ => (),
             }
         }
