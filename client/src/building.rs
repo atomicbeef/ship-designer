@@ -1,15 +1,16 @@
 use bevy::input::mouse::MouseButton;
 use bevy_mod_picking::{PickableBundle, PickingRaycastSet, RaycastSource};
 use bevy::prelude::*;
+use uflow::SendMode;
+use bevy_rapier3d::prelude::*;
+
 use common::network_id::NetworkId;
 use common::shape_transform::ShapeTransform;
-use uflow::SendMode;
-
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::materials::Material;
 use common::packets::Packet;
-use common::shape::{ShapeHandle, Shapes, ShapeId};
+use common::shape::{ShapeHandle, Shapes, ShapeId, VOXEL_SIZE};
 
 use crate::connection_state::ConnectionState;
 use crate::mesh_generation::{RegenerateShapeMesh, generate_shape_mesh};
@@ -106,10 +107,11 @@ pub fn spawn_shape(
     transform: Transform,
     network_id: NetworkId
 ) -> Entity {
+    let shape = shapes.get(&shape_handle).unwrap();
+
     let mesh_handle = match mesh_handles.get(&shape_handle) {
         Some(mesh_handle) => mesh_handle.clone(),
         None => {
-            let shape = shapes.get(&shape_handle).unwrap();
             let mesh = generate_shape_mesh(shape);
 
             let mesh_handle = meshes.add(mesh);
@@ -127,6 +129,11 @@ pub fn spawn_shape(
         })
         .insert(shape_handle)
         .insert(network_id)
+        .insert(Collider::cuboid(
+            shape.width() as f32 * VOXEL_SIZE / 2.0, 
+            shape.height() as f32 * VOXEL_SIZE / 2.0,
+            shape.depth() as f32 * VOXEL_SIZE / 2.0
+        ))
         .insert(PickableBundle::default())
         .id()
 }

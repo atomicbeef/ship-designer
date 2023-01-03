@@ -2,13 +2,10 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
-use common::shape::{Shape, ShapeHandle, Shapes};
+use common::shape::{Shape, ShapeHandle, Shapes, VOXEL_SIZE};
 use common::materials::Material;
 
 use crate::meshes::MeshHandles;
-
-// Voxels are 10 cm^3
-const VOXEL_SIZE: f32 = 0.1;
 
 pub fn generate_shape_mesh(
     shape: &Shape
@@ -114,6 +111,13 @@ pub fn generate_shape_mesh(
                 triangles.extend([vertex_index_offset + 22, vertex_index_offset + 23, vertex_index_offset + 20]);
             }
         }
+    }
+
+    // Center mesh to align with colliders
+    for vertex in vertices.iter_mut() {
+        vertex[0] -= shape.width() as f32 * VOXEL_SIZE / 2.0;
+        vertex[1] -= shape.height() as f32 * VOXEL_SIZE / 2.0;
+        vertex[2] += shape.depth() as f32 * VOXEL_SIZE / 2.0;
     }
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);

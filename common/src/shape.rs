@@ -6,6 +6,9 @@ use bevy::utils::HashMap;
 use crate::materials::Material;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
+// Voxels are 10 cm^3
+pub const VOXEL_SIZE: f32 = 0.1;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect)]
 pub struct ShapeId {
     id: u32
