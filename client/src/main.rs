@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
+use bevy::window::WindowClosed;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
@@ -54,14 +55,21 @@ fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(settings::Settings::default())
-        .add_plugins(DefaultPlugins.set(LogPlugin {
+        .add_plugins(
+            DefaultPlugins.set(LogPlugin {
                 level: Level::DEBUG,
                 filter: "wgpu=error,naga=error".to_string()
-        }))
+            })
+            .set(WindowPlugin {
+                exit_on_all_closed: false,
+                ..default()
+            })
+        )
         .add_plugin(FreeCameraPlugin)
         .add_startup_system(set_window_title)
         .add_startup_system(setup)
         .add_system(disconnect_on_esc)
+        .add_system(disconnect_on_window_close)
         .add_plugins(DefaultPickingPlugins)
         .add_plugin(DebugCursorPickingPlugin)
         .add_plugin(WorldInspectorPlugin::new())
@@ -132,6 +140,15 @@ fn disconnect_on_esc(
     mut connection_state: ResMut<ConnectionState>
 ) {
     if keys.pressed(KeyCode::Escape) {
+        connection_state.client.disconnect();
+    }
+}
+
+fn disconnect_on_window_close(
+    window_closed: EventReader<WindowClosed>,
+    mut connection_state: ResMut<ConnectionState>
+) {
+    if !window_closed.is_empty() {
         connection_state.client.disconnect();
     }
 }
