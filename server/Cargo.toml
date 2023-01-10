@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 common = { package = "ship-designer-common", path = "../common" }
-uflow = { git = "https://github.com/atomicbeef/uflow", branch = "configurable-timeout" }
+uflow = "0.7"
 iyes_loopless = "0.9"
 num_enum = "0.5"
 bevy_rapier3d = { version = "0.19", features = [ "simd-stable" ] }
