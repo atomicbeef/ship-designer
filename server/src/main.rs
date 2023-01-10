@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
 use common::player::Players;
+use common::ship::Ship;
 use iyes_loopless::prelude::*;
 use bevy_rapier3d::prelude::*;
 
@@ -98,12 +99,20 @@ fn setup_server(world: &mut World) {
 }
 
 fn setup(mut commands: Commands, mut network_id_generator: ResMut<NetworkIdGenerator>) {
-    let shape_handle = ShapeHandle::new(ShapeId::from(0));
-    let network_id = network_id_generator.generate();
-    let transform = Transform::from_xyz(0.0, 0.0, 0.0);
+    let body = commands.spawn(RigidBody::Dynamic)
+        .insert(VisibilityBundle::default())
+        .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
+        .insert(Velocity::default())
+        .insert(GravityScale(0.0))
+        .insert(network_id_generator.generate())
+        .insert(Ship)
+        .id();
 
-    commands.spawn_empty()
-        .insert(shape_handle)
-        .insert(network_id)
-        .insert(transform);
+    let shape = commands.spawn_empty()
+        .insert(ShapeHandle::new(ShapeId::from(0)))
+        .insert(network_id_generator.generate())
+        .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
+        .id();
+    
+    commands.entity(body).add_child(shape);
 }

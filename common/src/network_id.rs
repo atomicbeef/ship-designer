@@ -1,4 +1,5 @@
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Entity};
+use bevy::ecs::query::QueryIter;
 
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
@@ -30,4 +31,17 @@ impl PacketDeserialize for NetworkId {
         let id = u32::deserialize(packet)?;
         Ok(Self::from(id))
     }
+}
+
+pub fn entity_from_network_id(
+    network_id_iterator: QueryIter<(Entity, &NetworkId), ()>,
+    network_id: NetworkId
+) -> Option<Entity> {
+    for (entity, id) in network_id_iterator {
+        if *id == network_id {
+            return Some(entity);
+        }
+    }
+
+    None
 }

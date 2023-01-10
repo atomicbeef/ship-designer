@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
 
-use common::network_id::NetworkId;
+use common::network_id::{NetworkId, entity_from_network_id};
 use common::shape_transform::ShapeTransform;
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
@@ -25,7 +25,7 @@ pub fn build_request_events(
     mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
     mut shapes: ResMut<Shapes>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
-    transform_query: Query<&Transform>,
+    placement_query: Query<(&Parent, &Transform)>,
     network_id_query: Query<&NetworkId>
 ) {
     if mouse_buttons.just_pressed(MouseButton::Left) {
@@ -61,16 +61,20 @@ pub fn build_request_events(
                 }
             // Block placement
             } else {
-                if let Ok(origin_shape_transform) = transform_query.get(entity) {
+                if let Ok((body, origin_shape_transform)) = placement_query.get(entity) {
                     let shape_id = ShapeId::from(0);
                     let translation = origin_shape_transform.translation + data.normal();
-                    let transform = ShapeTransform::from_xyz(
+                    let shape_transform = ShapeTransform::from_xyz(
                         translation.x as i16,
                         translation.y as i16,
                         translation.z as i16
                     );
 
-                    place_shape_request_writer.send(PlaceShapeRequest(shape_id, transform));
+                    place_shape_request_writer.send(PlaceShapeRequest {
+                        shape_id,
+                        shape_transform,
+                        body_network_id: *network_id_query.get(body.get()).unwrap()
+                    });
                 }
             }
         }
@@ -105,7 +109,8 @@ pub fn spawn_shape(
     shapes: &Shapes,
     shape_handle: ShapeHandle,
     transform: Transform,
-    network_id: NetworkId
+    shape_network_id: NetworkId,
+    body: Entity,
 ) -> Entity {
     let shape = shapes.get(&shape_handle).unwrap();
 
@@ -121,21 +126,25 @@ pub fn spawn_shape(
         }
     };
 
-    commands.spawn(PbrBundle {
+    let shape_entity = commands.spawn(PbrBundle {
             mesh: mesh_handle,
             material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
-            transform: transform,
+            transform,
             ..Default::default()
         })
         .insert(shape_handle)
-        .insert(network_id)
+        .insert(shape_network_id)
         .insert(Collider::cuboid(
             shape.width() as f32 * VOXEL_SIZE / 2.0, 
             shape.height() as f32 * VOXEL_SIZE / 2.0,
             shape.depth() as f32 * VOXEL_SIZE / 2.0
         ))
         .insert(PickableBundle::default())
-        .id()
+        .id();
+    
+    commands.entity(body).add_child(shape_entity);
+
+    shape_entity
 }
 
 pub fn place_shapes(
@@ -144,7 +153,8 @@ pub fn place_shapes(
     mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    shapes: Res<Shapes>
+    shapes: Res<Shapes>,
+    body_query: Query<(Entity, &NetworkId)>
 ) {
     for event in place_shape_command_reader.iter() {
         let transform = Transform::from(event.transform);
@@ -156,7 +166,8 @@ pub fn place_shapes(
             &shapes,
             ShapeHandle::new(ShapeId::from(0)),
             transform,
-            event.network_id
+            event.shape_network_id,
+            entity_from_network_id(body_query.iter(), event.body_network_id).unwrap()
         );
         
         dbg!("Spawned shape with entity ID", entity);

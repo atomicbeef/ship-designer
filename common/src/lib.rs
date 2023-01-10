@@ -7,3 +7,4 @@ pub mod player;
 pub mod predefined_shapes;
 pub mod shape;
 pub mod shape_transform;
+pub mod ship;

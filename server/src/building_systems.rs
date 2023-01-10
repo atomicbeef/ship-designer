@@ -35,13 +35,14 @@ pub fn confirm_place_shape_requests(
 
         // Spawn shape
         let network_id = network_id_generator.generate();
-        let shape_handle = ShapeHandle::new(place_shape_request.0);
-        spawn_shape(&mut commands,  shape_handle, Transform::from(place_shape_request.1), network_id);
+        let shape_handle = ShapeHandle::new(place_shape_request.shape_id);
+        spawn_shape(&mut commands,  shape_handle, Transform::from(place_shape_request.shape_transform), network_id);
 
         send_place_shape_writer.send(PlaceShapeCommand {
-            shape_id: place_shape_request.0,
-            network_id,
-            transform: place_shape_request.1
+            shape_id: place_shape_request.shape_id,
+            shape_network_id: network_id,
+            transform: place_shape_request.shape_transform,
+            body_network_id: place_shape_request.body_network_id
         });
     }
 }

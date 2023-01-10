@@ -3,23 +3,29 @@ use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, Pa
 use crate::shape::ShapeId;
 use crate::shape_transform::ShapeTransform;
 
-pub struct PlaceShapeRequest(pub ShapeId, pub ShapeTransform);
+pub struct PlaceShapeRequest {
+    pub shape_id: ShapeId,
+    pub shape_transform: ShapeTransform,
+    pub body_network_id: NetworkId
+}
 
 impl TryFrom<Packet> for PlaceShapeRequest {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let shape_id = ShapeId::deserialize(&mut packet)?;
-        let transform = ShapeTransform::deserialize(&mut packet)?;
-        Ok(Self(shape_id, transform))
+        let shape_transform = ShapeTransform::deserialize(&mut packet)?;
+        let body_network_id = NetworkId::deserialize(&mut packet)?;
+        Ok(Self { shape_id, shape_transform, body_network_id })
     }
 }
 
 impl From<&PlaceShapeRequest> for Packet {
     fn from(place_shape_request: &PlaceShapeRequest) -> Self {
         let mut packet = Packet::new(PacketType::PlaceShape);
-        place_shape_request.0.serialize(&mut packet);
-        place_shape_request.1.serialize(&mut packet);
+        place_shape_request.shape_id.serialize(&mut packet);
+        place_shape_request.shape_transform.serialize(&mut packet);
+        place_shape_request.body_network_id.serialize(&mut packet);
         packet
     }
 }
@@ -27,7 +33,8 @@ impl From<&PlaceShapeRequest> for Packet {
 pub struct PlaceShapeCommand {
     pub shape_id: ShapeId,
     pub transform: ShapeTransform,
-    pub network_id: NetworkId
+    pub shape_network_id: NetworkId,
+    pub body_network_id: NetworkId
 }
 
 impl TryFrom<Packet> for PlaceShapeCommand {
@@ -36,8 +43,9 @@ impl TryFrom<Packet> for PlaceShapeCommand {
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let shape_id = ShapeId::deserialize(&mut packet)?;
         let transform = ShapeTransform::deserialize(&mut packet)?;
-        let network_id = NetworkId::deserialize(&mut packet)?;
-        Ok(Self { shape_id, transform, network_id })
+        let shape_network_id = NetworkId::deserialize(&mut packet)?;
+        let body_network_id = NetworkId::deserialize(&mut packet)?;
+        Ok(Self { shape_id, transform, shape_network_id, body_network_id })
     }
 }
 
@@ -46,7 +54,8 @@ impl From<&PlaceShapeCommand> for Packet {
         let mut packet = Packet::new(PacketType::PlaceShape);
         place_shape_command.shape_id.serialize(&mut packet);
         place_shape_command.transform.serialize(&mut packet);
-        place_shape_command.network_id.serialize(&mut packet);
+        place_shape_command.shape_network_id.serialize(&mut packet);
+        place_shape_command.body_network_id.serialize(&mut packet);
         packet
     }
 }

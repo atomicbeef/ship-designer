@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::*;
 
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::player::{Player, Players};
@@ -44,6 +45,14 @@ pub fn initial_state_setup(
             players.add_player(player.clone());
         }
 
+        let body = commands.spawn(RigidBody::Dynamic)
+            .insert(VisibilityBundle::default())
+            .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
+            .insert(Velocity::default())
+            .insert(GravityScale(0.0))
+            .insert(initial_state.body_network_id)
+            .id();
+
         for (shape_network_repr, transform, network_id) in initial_state.shapes.iter() {
             let shape_handle = match shape_network_repr {
                 ShapeNetworkRepr::Predefined(shape_id) => {
@@ -62,7 +71,8 @@ pub fn initial_state_setup(
                 &shapes,
                 shape_handle,
                 Transform::from(*transform),
-                *network_id
+                *network_id,
+                body
             );
         }
     }

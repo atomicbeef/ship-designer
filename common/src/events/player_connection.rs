@@ -49,6 +49,7 @@ impl From<&PlayerDisconnected> for Packet {
 
 pub struct InitialState {
     pub players: Vec<Player>,
+    pub body_network_id: NetworkId,
     pub shapes: Vec<(ShapeNetworkRepr, ShapeTransform, NetworkId)>,
 }
 
@@ -57,8 +58,9 @@ impl TryFrom<Packet> for InitialState {
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let players: Vec<Player> = Vec::deserialize(&mut packet)?;
+        let body_network_id = NetworkId::deserialize(&mut packet)?;
         let shapes: Vec<(ShapeNetworkRepr, ShapeTransform, NetworkId)> = Vec::deserialize(&mut packet)?;
-        Ok(Self { players, shapes })
+        Ok(Self { players, body_network_id, shapes })
     }
 }
 
@@ -66,6 +68,7 @@ impl From<&InitialState> for Packet {
     fn from(initial_state: &InitialState) -> Self {
         let mut packet = Packet::new(PacketType::InitialState);
         (&initial_state.players).serialize(&mut packet);
+        (&initial_state.body_network_id).serialize(&mut packet);
         (&initial_state.shapes).serialize(&mut packet);
         packet
     }
