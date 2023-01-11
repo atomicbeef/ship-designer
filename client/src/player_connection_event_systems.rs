@@ -4,6 +4,7 @@ use bevy_rapier3d::prelude::*;
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::player::{Player, Players};
 use common::shape::{Shapes, ShapeNetworkRepr, ShapeHandle};
+use common::ship::Ship;
 
 use crate::building::spawn_shape;
 use crate::meshes::MeshHandles;
@@ -51,6 +52,7 @@ pub fn initial_state_setup(
             .insert(Velocity::default())
             .insert(GravityScale(0.0))
             .insert(initial_state.body_network_id)
+            .insert(Ship)
             .id();
 
         for (shape_network_repr, transform, network_id) in initial_state.shapes.iter() {
