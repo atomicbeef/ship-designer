@@ -10,3 +10,4 @@ bevy = { version = "0.9", default-features = false }
 uflow = "0.7"
 num_enum = "0.5"
 thiserror = "1.0"
+crossbeam-channel = "0.5"

@@ -6,7 +6,7 @@ use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::network_id::NetworkId;
 use common::packets::Packet;
-use common::shape::ShapeHandle;
+use common::shape::{Shapes, ShapeHandle};
 
 use crate::network_id_generator::NetworkIdGenerator;
 use crate::server_state::ServerState;
@@ -28,15 +28,16 @@ pub fn confirm_place_shape_requests(
     mut place_shape_request_reader: EventReader<PlaceShapeRequest>,
     mut send_place_shape_writer: EventWriter<PlaceShapeCommand>,
     mut commands: Commands,
-    mut network_id_generator: ResMut<NetworkIdGenerator>
+    mut network_id_generator: ResMut<NetworkIdGenerator>,
+    shapes: Res<Shapes>,
 ) {
     for place_shape_request in place_shape_request_reader.iter() {
         // TODO: Prevent shapes from being placed inside of each other
 
         // Spawn shape
         let network_id = network_id_generator.generate();
-        let shape_handle = ShapeHandle::new(place_shape_request.shape_id);
-        spawn_shape(&mut commands,  shape_handle, Transform::from(place_shape_request.shape_transform), network_id);
+        let shape_handle = shapes.get_handle(place_shape_request.shape_id);
+        spawn_shape(&mut commands, shape_handle, Transform::from(place_shape_request.shape_transform), network_id);
 
         send_place_shape_writer.send(PlaceShapeCommand {
             shape_id: place_shape_request.shape_id,

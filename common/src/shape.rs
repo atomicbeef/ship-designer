@@ -1,7 +1,10 @@
-use bevy::ecs::reflect::ReflectComponent;
-use bevy::prelude::{Component, Resource};
+use std::sync::Mutex;
+
+use bevy::log::debug;
+use bevy::prelude::{Component, Resource, EventWriter, ResMut};
 use bevy::reflect::Reflect;
-use bevy::utils::HashMap;
+use bevy::utils::{hashbrown::hash_map, HashMap};
+use crossbeam_channel::{Sender, Receiver};
 
 use crate::materials::Material;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
@@ -120,25 +123,23 @@ impl PacketDeserialize for Shape {
     }
 }
 
-#[derive(Clone, Component, PartialEq, Eq, Hash, Reflect)]
-#[reflect(Component)]
-pub struct ShapeHandle {
-    id: ShapeId
-}
+struct DecrementRef(ShapeId);
 
-impl Default for ShapeHandle {
-    fn default() -> Self {
-        Self { id: ShapeId::from(0) }
-    }
+#[derive(Component)]
+pub struct ShapeHandle {
+    id: ShapeId,
+    channel: Sender<DecrementRef>
 }
 
 impl ShapeHandle {
-    pub fn new(id: ShapeId) -> Self {
-        Self { id }
-    }
-
     pub fn id(&self) -> ShapeId {
         self.id
+    }
+}
+
+impl Drop for ShapeHandle {
+    fn drop(&mut self) {
+        self.channel.send(DecrementRef(self.id)).unwrap();
     }
 }
 
@@ -176,20 +177,41 @@ impl PacketDeserialize for ShapeNetworkRepr {
     }
 }
 
+pub struct FreedShapes(pub Box<[ShapeId]>);
+
 #[derive(Resource)]
 pub struct Shapes {
     shapes: HashMap<ShapeId, Shape>,
-    current_shape_id: u32
+    current_shape_id: u32,
+    ref_counts: Mutex<HashMap<ShapeId, usize>>,
+    decrement_ref_channels: (Sender<DecrementRef>, Receiver<DecrementRef>),
 }
 
 impl Shapes {
     pub fn new() -> Self {
-        Self { shapes: HashMap::new(), current_shape_id: 0 }
+        Self {
+            shapes: HashMap::new(),
+            current_shape_id: 0,
+            ref_counts: Mutex::new(HashMap::new()),
+            decrement_ref_channels: (crossbeam_channel::unbounded()),
+        }
     }
 
     pub fn add(&mut self, shape: Shape) -> ShapeHandle {
         let id = self.insert(shape);
-        ShapeHandle { id }
+        self.ref_counts.lock().unwrap().insert(id, 1);
+        ShapeHandle { id, channel: self.decrement_ref_channels.0.clone() }
+    }
+
+    pub fn add_static(&mut self, shape: Shape) -> ShapeHandle {
+        let id = self.insert(shape);
+        self.ref_counts.lock().unwrap().insert(id, 2);
+        ShapeHandle { id, channel: self.decrement_ref_channels.0.clone() }
+    }
+
+    pub fn get_handle(&self, shape_id: ShapeId) -> ShapeHandle {
+        *self.ref_counts.lock().unwrap().entry(shape_id).or_insert(0) += 1;
+        ShapeHandle { id: shape_id, channel: self.decrement_ref_channels.0.clone() }
     }
 
     pub fn get(&self, shape_handle: &ShapeHandle) -> Option<&Shape> {
@@ -210,6 +232,7 @@ impl Shapes {
         let id = self.insert(new_shape);
 
         shape_handle.id = id;
+        self.ref_counts.lock().unwrap().insert(id, 1);
 
         self.shapes.get_mut(&id)
     }
@@ -231,5 +254,38 @@ impl Shapes {
         Some(shape.parent_shape_id.is_some())
     }
 
-    /* TODO: Shape freeing */
+    fn get_unused_shape_ids(&mut self) -> Box<[ShapeId]> {
+        let mut ref_counts = self.ref_counts.lock().unwrap();
+        let mut unused_shape_ids = Vec::new();
+
+        for decrement in self.decrement_ref_channels.1.try_iter() {
+            let count = match ref_counts.entry(decrement.0) {
+                hash_map::Entry::Occupied(mut entry) => {
+                    let ref_count = entry.get_mut();
+                    *ref_count -= 1;
+                    *ref_count
+                },
+                hash_map::Entry::Vacant(_) => 0
+            };
+            
+            if count == 0 {
+                unused_shape_ids.push(decrement.0);
+                ref_counts.remove(&decrement.0);
+            }
+        }
+
+        unused_shape_ids.into_boxed_slice()
+    }
+
+}
+
+pub fn free_shapes(mut shapes: ResMut<Shapes>, mut freed_shapes_writer: EventWriter<FreedShapes>) {
+    let unused_shape_ids = shapes.get_unused_shape_ids();
+
+    for id in unused_shape_ids.iter() {
+        shapes.shapes.remove(id);
+        debug!("Removed shape with ID {:?}", id);
+    }
+
+    freed_shapes_writer.send(FreedShapes(unused_shape_ids));
 }

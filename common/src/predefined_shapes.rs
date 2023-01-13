@@ -11,7 +11,7 @@ pub fn add_hardcoded_shapes(shapes: &mut Shapes) -> Vec<ShapeHandle> {
         vec!(Material::Aluminum; 10 * 10 * 10),
         None
     );
-    shape_handles.push(shapes.add(aluminum_cube));
+    shape_handles.push(shapes.add_static(aluminum_cube));
 
     shape_handles
 }

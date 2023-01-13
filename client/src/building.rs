@@ -114,13 +114,13 @@ pub fn spawn_shape(
 ) -> Entity {
     let shape = shapes.get(&shape_handle).unwrap();
 
-    let mesh_handle = match mesh_handles.get(&shape_handle) {
+    let mesh_handle = match mesh_handles.get(&shape_handle.id()) {
         Some(mesh_handle) => mesh_handle.clone(),
         None => {
             let mesh = generate_shape_mesh(shape);
 
             let mesh_handle = meshes.add(mesh);
-            mesh_handles.add(shape_handle.clone(), mesh_handle.clone());
+            mesh_handles.add(shape_handle.id(), mesh_handle.clone());
 
             mesh_handle
         }
@@ -164,7 +164,7 @@ pub fn place_shapes(
             &mut meshes,
             &mut materials,
             &shapes,
-            ShapeHandle::new(ShapeId::from(0)),
+            shapes.get_handle(ShapeId::from(0)),
             transform,
             event.shape_network_id,
             entity_from_network_id(body_query.iter(), event.body_network_id).unwrap()

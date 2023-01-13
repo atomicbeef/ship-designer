@@ -20,7 +20,7 @@ mod server_state;
 use building_systems::{send_place_shape_commands, send_delete_shape_commands};
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
-use common::shape::{Shapes, ShapeHandle, ShapeId};
+use common::shape::{Shapes, ShapeId, free_shapes, FreedShapes};
 use common::predefined_shapes::add_hardcoded_shapes;
 
 use building_systems::{confirm_place_shape_requests, confirm_delete_shape_requests};
@@ -36,9 +36,6 @@ fn main() {
     let mut packet_process_stage = SystemStage::parallel();
     packet_process_stage.add_system(process_packets);
 
-    let mut shapes = Shapes::new();
-    add_hardcoded_shapes(&mut shapes);
-
     App::new()
         .add_plugins(MinimalPlugins)
         .add_plugin(LogPlugin {
@@ -53,8 +50,9 @@ fn main() {
         .add_plugin(MeshPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .insert_resource(NetworkIdGenerator::new())
-        .insert_resource(shapes)
+        .insert_resource(Shapes::new())
         .insert_resource(Players::new())
+        .add_event::<FreedShapes>()
         .add_event::<PlaceShapeRequest>()
         .add_event::<PlaceShapeCommand>()
         .add_event::<DeleteShapeRequest>()
@@ -69,6 +67,7 @@ fn main() {
         )
         .add_startup_system(setup_server)
         .add_startup_system(setup)
+        .add_system(free_shapes)
         .add_system(confirm_place_shape_requests)
         .add_system(confirm_delete_shape_requests)
         .add_system(send_place_shape_commands)
@@ -98,7 +97,13 @@ fn setup_server(world: &mut World) {
     world.insert_non_send_resource(server_state);
 }
 
-fn setup(mut commands: Commands, mut network_id_generator: ResMut<NetworkIdGenerator>) {
+fn setup(
+    mut commands: Commands,
+    mut network_id_generator: ResMut<NetworkIdGenerator>,
+    mut shapes: ResMut<Shapes>
+) {
+    add_hardcoded_shapes(&mut shapes);
+
     let body = commands.spawn(RigidBody::Dynamic)
         .insert(VisibilityBundle::default())
         .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
@@ -109,7 +114,7 @@ fn setup(mut commands: Commands, mut network_id_generator: ResMut<NetworkIdGener
         .id();
 
     let shape = commands.spawn_empty()
-        .insert(ShapeHandle::new(ShapeId::from(0)))
+        .insert(shapes.get_handle(ShapeId::from(0)))
         .insert(network_id_generator.generate())
         .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
         .id();

@@ -15,7 +15,7 @@ use uflow::EndpointConfig;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::predefined_shapes::add_hardcoded_shapes;
-use common::shape::{Shapes, ShapeHandle};
+use common::shape::{Shapes, FreedShapes, free_shapes};
 
 mod building;
 mod camera;
@@ -29,7 +29,7 @@ mod settings;
 use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests};
 use camera::{FreeCameraPlugin, FreeCamera};
 use connection_state::ConnectionState;
-use meshes::MeshHandles;
+use meshes::{MeshHandles, free_mesh_handles};
 use packet_handling::process_packets;
 use player_connection_event_systems::{player_connected, player_disconnected, initial_state_setup};
 
@@ -93,16 +93,18 @@ fn main() {
         .add_event::<PlayerDisconnected>()
         .add_event::<InitialState>()
         .add_event::<RegenerateShapeMesh>()
+        .add_event::<FreedShapes>()
         .add_system(build_request_events)
         .add_system(send_place_block_requests)
         .add_system(send_delete_block_requests)
         .add_system(place_shapes)
         .add_system(delete_shapes)
         .add_system(regenerate_shape_mesh)
+        .add_system(free_shapes)
+        .add_system(free_mesh_handles)
         .add_system(player_connected)
         .add_system(player_disconnected)
         .add_system(initial_state_setup.run_on_event::<InitialState>())
-        .register_type::<ShapeHandle>()
         .run();
 }
 
@@ -124,7 +126,7 @@ fn setup(
         let shape = shapes.get(&shape_handle).unwrap();
         let mesh = mesh_generation::generate_shape_mesh(shape);
         let mesh_handle = meshes.add(mesh);
-        mesh_handles.add(shape_handle, mesh_handle);
+        mesh_handles.add(shape_handle.id(), mesh_handle);
     }
 
     commands.spawn(Camera3dBundle {

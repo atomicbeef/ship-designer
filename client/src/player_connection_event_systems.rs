@@ -3,7 +3,7 @@ use bevy_rapier3d::prelude::*;
 
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::player::{Player, Players};
-use common::shape::{Shapes, ShapeNetworkRepr, ShapeHandle};
+use common::shape::{Shapes, ShapeNetworkRepr, ShapeId};
 use common::ship::Ship;
 
 use crate::building::spawn_shape;
@@ -58,7 +58,7 @@ pub fn initial_state_setup(
         for (shape_network_repr, transform, network_id) in initial_state.shapes.iter() {
             let shape_handle = match shape_network_repr {
                 ShapeNetworkRepr::Predefined(shape_id) => {
-                    ShapeHandle::new(*shape_id)
+                    shapes.get_handle(ShapeId::from(*shape_id))
                 },
                 ShapeNetworkRepr::Child(shape) => {
                     shapes.add(shape.clone())

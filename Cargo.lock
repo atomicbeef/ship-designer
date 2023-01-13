@@ -2757,6 +2757,7 @@ name = "ship-designer-common"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "crossbeam-channel",
  "num_enum",
  "thiserror",
  "uflow",
