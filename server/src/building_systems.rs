@@ -4,7 +4,7 @@ use uflow::SendMode;
 
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
-use common::network_id::NetworkId;
+use common::network_id::{NetworkId, entity_from_network_id};
 use common::packets::Packet;
 use common::shape::{Shapes, ShapeHandle};
 
@@ -15,13 +15,18 @@ pub fn spawn_shape(
     commands: &mut Commands,
     shape_handle: ShapeHandle,
     transform: Transform,
-    network_id: NetworkId
+    shape_network_id: NetworkId,
+    body: Entity
 ) -> Entity {
-    commands.spawn_empty()
+    let shape_entity = commands.spawn_empty()
         .insert(shape_handle)
-        .insert(network_id)
+        .insert(shape_network_id)
         .insert(transform)
-        .id()
+        .id();
+    
+    commands.entity(body).add_child(shape_entity);
+
+    shape_entity
 }
 
 pub fn confirm_place_shape_requests(
@@ -30,6 +35,7 @@ pub fn confirm_place_shape_requests(
     mut commands: Commands,
     mut network_id_generator: ResMut<NetworkIdGenerator>,
     shapes: Res<Shapes>,
+    body_query: Query<(Entity, &NetworkId)>
 ) {
     for place_shape_request in place_shape_request_reader.iter() {
         // TODO: Prevent shapes from being placed inside of each other
@@ -37,7 +43,15 @@ pub fn confirm_place_shape_requests(
         // Spawn shape
         let network_id = network_id_generator.generate();
         let shape_handle = shapes.get_handle(place_shape_request.shape_id);
-        spawn_shape(&mut commands, shape_handle, Transform::from(place_shape_request.shape_transform), network_id);
+        let body = entity_from_network_id(body_query.iter(), place_shape_request.body_network_id).unwrap();
+
+        spawn_shape(
+            &mut commands,
+            shape_handle,
+            Transform::from(place_shape_request.shape_transform),
+            network_id,
+            body
+        );
 
         send_place_shape_writer.send(PlaceShapeCommand {
             shape_id: place_shape_request.shape_id,
@@ -52,11 +66,14 @@ pub fn confirm_delete_shape_requests(
     mut commands: Commands,
     mut delete_shape_request_reader: EventReader<DeleteShapeRequest>,
     mut send_delete_shape_writer: EventWriter<DeleteShapeCommand>,
-    network_id_query: Query<(Entity, &NetworkId), With<ShapeHandle>>
+    network_id_query: Query<(Entity, &NetworkId), With<ShapeHandle>>,
+    parent_query: Query<&Parent>
 ) {
     for delete_shape_request in delete_shape_request_reader.iter() {
         for (entity, network_id) in network_id_query.iter() {
             if *network_id == delete_shape_request.0 {
+                let ship = parent_query.get(entity).unwrap().get();
+                commands.entity(ship).remove_children(&[entity]);
                 commands.entity(entity).despawn();
                 send_delete_shape_writer.send(DeleteShapeCommand(delete_shape_request.0));
                 break;

@@ -177,11 +177,14 @@ pub fn place_shapes(
 pub fn delete_shapes(
     mut delete_shape_command_reader: EventReader<DeleteShapeCommand>,
     mut commands: Commands,
-    shape_query: Query<(Entity, &NetworkId)>
+    shape_query: Query<(Entity, &NetworkId)>,
+    parent_query: Query<&Parent>
 ) {
     for event in delete_shape_command_reader.iter() {
         for (entity, network_id) in shape_query.iter() {
             if *network_id == event.0 {
+                let ship = parent_query.get(entity).unwrap().get();
+                commands.entity(ship).remove_children(&[entity]);
                 commands.entity(entity).despawn();
                 dbg!("Deleting shape with entity ID", entity);
             }
