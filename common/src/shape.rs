@@ -123,12 +123,12 @@ impl PacketDeserialize for Shape {
     }
 }
 
-struct DecrementRef(ShapeId);
+struct HandleDroped(ShapeId);
 
 #[derive(Component)]
 pub struct ShapeHandle {
     id: ShapeId,
-    channel: Sender<DecrementRef>
+    channel: Sender<HandleDroped>
 }
 
 impl ShapeHandle {
@@ -139,7 +139,7 @@ impl ShapeHandle {
 
 impl Drop for ShapeHandle {
     fn drop(&mut self) {
-        self.channel.send(DecrementRef(self.id)).unwrap();
+        self.channel.send(HandleDroped(self.id)).unwrap();
     }
 }
 
@@ -184,7 +184,7 @@ pub struct Shapes {
     shapes: HashMap<ShapeId, Shape>,
     current_shape_id: u32,
     ref_counts: Mutex<HashMap<ShapeId, usize>>,
-    decrement_ref_channels: (Sender<DecrementRef>, Receiver<DecrementRef>),
+    handle_dropped_channels: (Sender<HandleDroped>, Receiver<HandleDroped>),
 }
 
 impl Shapes {
@@ -193,25 +193,25 @@ impl Shapes {
             shapes: HashMap::new(),
             current_shape_id: 0,
             ref_counts: Mutex::new(HashMap::new()),
-            decrement_ref_channels: (crossbeam_channel::unbounded()),
+            handle_dropped_channels: (crossbeam_channel::unbounded()),
         }
     }
 
     pub fn add(&mut self, shape: Shape) -> ShapeHandle {
         let id = self.insert(shape);
         self.ref_counts.lock().unwrap().insert(id, 1);
-        ShapeHandle { id, channel: self.decrement_ref_channels.0.clone() }
+        ShapeHandle { id, channel: self.handle_dropped_channels.0.clone() }
     }
 
     pub fn add_static(&mut self, shape: Shape) -> ShapeHandle {
         let id = self.insert(shape);
         self.ref_counts.lock().unwrap().insert(id, 2);
-        ShapeHandle { id, channel: self.decrement_ref_channels.0.clone() }
+        ShapeHandle { id, channel: self.handle_dropped_channels.0.clone() }
     }
 
     pub fn get_handle(&self, shape_id: ShapeId) -> ShapeHandle {
         *self.ref_counts.lock().unwrap().entry(shape_id).or_insert(0) += 1;
-        ShapeHandle { id: shape_id, channel: self.decrement_ref_channels.0.clone() }
+        ShapeHandle { id: shape_id, channel: self.handle_dropped_channels.0.clone() }
     }
 
     pub fn get(&self, shape_handle: &ShapeHandle) -> Option<&Shape> {
@@ -258,8 +258,8 @@ impl Shapes {
         let mut ref_counts = self.ref_counts.lock().unwrap();
         let mut unused_shape_ids = Vec::new();
 
-        for decrement in self.decrement_ref_channels.1.try_iter() {
-            let count = match ref_counts.entry(decrement.0) {
+        for handle_dropped in self.handle_dropped_channels.1.try_iter() {
+            let count = match ref_counts.entry(handle_dropped.0) {
                 hash_map::Entry::Occupied(mut entry) => {
                     let ref_count = entry.get_mut();
                     *ref_count -= 1;
@@ -269,8 +269,8 @@ impl Shapes {
             };
             
             if count == 0 {
-                unused_shape_ids.push(decrement.0);
-                ref_counts.remove(&decrement.0);
+                unused_shape_ids.push(handle_dropped.0);
+                ref_counts.remove(&handle_dropped.0);
             }
         }
 
