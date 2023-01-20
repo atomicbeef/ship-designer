@@ -26,7 +26,7 @@ mod packet_handling;
 mod player_connection_event_systems;
 mod settings;
 
-use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests};
+use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker};
 use camera::{FreeCameraPlugin, FreeCamera};
 use connection_state::ConnectionState;
 use meshes::{MeshHandles, free_mesh_handles};
@@ -94,6 +94,8 @@ fn main() {
         .add_event::<InitialState>()
         .add_event::<RegenerateShapeMesh>()
         .add_event::<FreedShapes>()
+        .add_system(move_build_marker)
+        .add_system(rotate_build_marker)
         .add_system(build_request_events)
         .add_system(send_place_block_requests)
         .add_system(send_delete_block_requests)
@@ -135,6 +137,8 @@ fn setup(
     })
     .insert(FreeCamera)
     .insert(PickingCameraBundle::default());
+
+    commands.spawn(BuildMarker).insert(TransformBundle::IDENTITY);
 }
 
 fn disconnect_on_esc(

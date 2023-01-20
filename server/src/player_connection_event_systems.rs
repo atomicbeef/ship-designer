@@ -50,11 +50,7 @@ pub fn send_player_connected(
                     }
                 };
 
-                let shape_transform = ShapeTransform::from_xyz(
-                    transform.translation.x as i16,
-                    transform.translation.y as i16,
-                    transform.translation.z as i16
-                );
+                let shape_transform = ShapeTransform::from(*transform);
 
                 shape_data.push((shape_network_repr, shape_transform, *network_id));
             }

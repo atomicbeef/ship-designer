@@ -1,3 +1,5 @@
+use core::f32::consts::PI;
+
 use bevy::input::mouse::MouseButton;
 use bevy_mod_picking::{PickableBundle, PickingRaycastSet, RaycastSource};
 use bevy::prelude::*;
@@ -16,6 +18,61 @@ use crate::connection_state::ConnectionState;
 use crate::mesh_generation::{RegenerateShapeMesh, generate_shape_mesh};
 use crate::meshes::MeshHandles;
 
+#[derive(Component)]
+pub struct BuildMarker;
+
+pub fn move_build_marker(
+    mut marker_query: Query<&mut Transform, With<BuildMarker>>,
+    transform_query: Query<&Transform, Without<BuildMarker>>,
+    intersection_query: Query<&RaycastSource<PickingRaycastSet>>
+) {
+    let mut marker_transform = match marker_query.iter_mut().next() {
+        Some(transform) => transform,
+        None => { return; }
+    };
+
+    if let Some((entity, data)) = intersection_query.iter().next().unwrap().get_nearest_intersection() {
+        if let Ok(origin_shape_transform) = transform_query.get(entity) {
+            let new_translation = origin_shape_transform.translation + data.normal();
+            marker_transform.translation = new_translation;
+        }
+    }
+}
+
+pub fn rotate_build_marker(
+    mut marker_query: Query<&mut Transform, With<BuildMarker>>,
+    keys: Res<Input<KeyCode>>
+) {
+    let mut marker_transform = match marker_query.iter_mut().next() {
+        Some(transform) => transform,
+        None => { return; }
+    };
+
+    if keys.just_pressed(KeyCode::J) {
+        marker_transform.rotate_x(PI / 2.0);
+    }
+
+    if keys.just_pressed(KeyCode::U) {
+        marker_transform.rotate_x(-PI / 2.0);
+    }
+
+    if keys.just_pressed(KeyCode::K) {
+        marker_transform.rotate_y(PI / 2.0);
+    }
+
+    if keys.just_pressed(KeyCode::I) {
+        marker_transform.rotate_y(-PI / 2.0);
+    }
+
+    if keys.just_pressed(KeyCode::L) {
+        marker_transform.rotate_z(PI / 2.0);
+    }
+
+    if keys.just_pressed(KeyCode::O) {
+        marker_transform.rotate_z(-PI / 2.0);
+    }
+}
+
 pub fn build_request_events(
     mouse_buttons: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
@@ -25,7 +82,8 @@ pub fn build_request_events(
     mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
     mut shapes: ResMut<Shapes>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
-    placement_query: Query<(&Parent, &Transform)>,
+    placement_query: Query<&Parent>,
+    marker_query: Query<&Transform, With<BuildMarker>>,
     network_id_query: Query<&NetworkId>
 ) {
     if mouse_buttons.just_pressed(MouseButton::Left) {
@@ -61,20 +119,17 @@ pub fn build_request_events(
                 }
             // Block placement
             } else {
-                if let Ok((body, origin_shape_transform)) = placement_query.get(entity) {
-                    let shape_id = ShapeId::from(0);
-                    let translation = origin_shape_transform.translation + data.normal();
-                    let shape_transform = ShapeTransform::from_xyz(
-                        translation.x as i16,
-                        translation.y as i16,
-                        translation.z as i16
-                    );
-
-                    place_shape_request_writer.send(PlaceShapeRequest {
-                        shape_id,
-                        shape_transform,
-                        body_network_id: *network_id_query.get(body.get()).unwrap()
-                    });
+                if let Ok(body) = placement_query.get(entity) {
+                    if let Some(marker_transform) = marker_query.iter().next() {
+                        let shape_id = ShapeId::from(0);
+                        let shape_transform = ShapeTransform::from(*marker_transform);
+    
+                        place_shape_request_writer.send(PlaceShapeRequest {
+                            shape_id,
+                            shape_transform,
+                            body_network_id: *network_id_query.get(body.get()).unwrap()
+                        });
+                    }
                 }
             }
         }

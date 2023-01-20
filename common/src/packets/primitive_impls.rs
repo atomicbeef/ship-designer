@@ -108,7 +108,7 @@ impl PacketDeserialize for String {
 
 impl PacketSerialize for f32 {
     fn serialize(&self, packet: &mut Packet) {
-        self.to_le_bytes().serialize(packet);
+        packet.write_bytes(&self.to_le_bytes());
     }
 }
 
