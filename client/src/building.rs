@@ -225,7 +225,7 @@ pub fn place_shapes(
             entity_from_network_id(body_query.iter(), event.body_network_id).unwrap()
         );
         
-        dbg!("Spawned shape with entity ID", entity);
+        debug!("Spawned shape with entity ID {:?}", entity);
     }
 }
 
@@ -241,7 +241,7 @@ pub fn delete_shapes(
                 let ship = parent_query.get(entity).unwrap().get();
                 commands.entity(ship).remove_children(&[entity]);
                 commands.entity(entity).despawn();
-                dbg!("Deleting shape with entity ID", entity);
+                debug!("Deleting shape with entity ID {:?}", entity);
             }
         }
     }
