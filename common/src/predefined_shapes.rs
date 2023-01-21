@@ -13,5 +13,14 @@ pub fn add_hardcoded_shapes(shapes: &mut Shapes) -> Vec<ShapeHandle> {
     );
     shape_handles.push(shapes.add_static(aluminum_cube));
 
+    let test_prism_2x1x3 = Shape::new(
+        2,
+        1,
+        3,
+        vec!(Material::Aluminum; 2 * 1 * 3),
+        None
+    );
+    shape_handles.push(shapes.add_static(test_prism_2x1x3));
+
     shape_handles
 }

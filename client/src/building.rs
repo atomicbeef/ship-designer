@@ -121,7 +121,7 @@ pub fn build_request_events(
             } else {
                 if let Ok(body) = placement_query.get(entity) {
                     if let Some(marker_transform) = marker_query.iter().next() {
-                        let shape_id = ShapeId::from(0);
+                        let shape_id = ShapeId::from(1);
                         let shape_transform = ShapeTransform::from(*marker_transform);
     
                         place_shape_request_writer.send(PlaceShapeRequest {
@@ -138,9 +138,9 @@ pub fn build_request_events(
 
 pub fn send_place_block_requests(
     mut connection_state: ResMut<ConnectionState>,
-    mut place_block_request_reader: EventReader<PlaceShapeRequest>
+    mut place_shape_request_reader: EventReader<PlaceShapeRequest>
 ) {
-    for place_block_request in place_block_request_reader.iter() {
+    for place_block_request in place_shape_request_reader.iter() {
         let packet: Packet = place_block_request.into();
         connection_state.client.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
     }
@@ -148,9 +148,9 @@ pub fn send_place_block_requests(
 
 pub fn send_delete_block_requests(
     mut connection_state: ResMut<ConnectionState>,
-    mut delete_block_request_reader: EventReader<DeleteShapeRequest>
+    mut delete_shape_request_reader: EventReader<DeleteShapeRequest>
 ) {
-    for delete_block_request in delete_block_request_reader.iter() {
+    for delete_block_request in delete_shape_request_reader.iter() {
         let packet: Packet = delete_block_request.into();
         connection_state.client.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
     }
@@ -219,7 +219,7 @@ pub fn place_shapes(
             &mut meshes,
             &mut materials,
             &shapes,
-            shapes.get_handle(ShapeId::from(0)),
+            shapes.get_handle(event.shape_id),
             transform,
             event.shape_network_id,
             entity_from_network_id(body_query.iter(), event.body_network_id).unwrap()
