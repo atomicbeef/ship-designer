@@ -4,7 +4,7 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::window::WindowClosed;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
-use bevy_inspector_egui::WorldInspectorPlugin;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use common::player::Players;
 use iyes_loopless::prelude::*;
@@ -72,7 +72,7 @@ fn main() {
         .add_system(disconnect_on_window_close)
         .add_plugins(DefaultPickingPlugins)
         .add_plugin(DebugCursorPickingPlugin)
-        .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(WorldInspectorPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(connection_state)
@@ -107,6 +107,8 @@ fn main() {
         .add_system(player_connected)
         .add_system(player_disconnected)
         .add_system(initial_state_setup.run_on_event::<InitialState>())
+        .register_type::<common::shape::ShapeId>()
+        .register_type::<common::shape::ShapeHandle>()
         .run();
 }
 

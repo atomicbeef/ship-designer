@@ -125,9 +125,10 @@ impl PacketDeserialize for Shape {
 
 struct HandleDroped(ShapeId);
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct ShapeHandle {
     id: ShapeId,
+    #[reflect(ignore)]
     channel: Sender<HandleDroped>
 }
 

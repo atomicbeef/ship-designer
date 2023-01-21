@@ -10,7 +10,7 @@ common = { package = "ship-designer-common", path = "../common" }
 bevy_mod_picking = "0.10"
 bevy_mod_raycast = "0.7"
 bevy_egui = "0.17"
-bevy-inspector-egui = "0.14"
+bevy-inspector-egui = "0.17"
 uflow = "0.7"
 iyes_loopless = "0.9"
 num_enum = "0.5"
