@@ -14,27 +14,84 @@ use common::materials::Material;
 use common::packets::Packet;
 use common::shape::{ShapeHandle, Shapes, ShapeId, VOXEL_SIZE};
 
+use crate::building_material::BuildingMaterial;
 use crate::connection_state::ConnectionState;
-use crate::mesh_generation::{RegenerateShapeMesh, generate_shape_mesh};
+use crate::mesh_generation::{RegenerateShapeMesh, get_mesh_or_generate};
 use crate::meshes::MeshHandles;
+
+fn snap_to_grid(point: Vec3, snap_resolution: f32) -> Vec3 {
+    // This extra rounding smoothes out any jittering
+    let rounded_x = (point.x * 1000.0).round() / 1000.0;
+    let rounded_y = (point.y * 1000.0).round() / 1000.0;
+    let rounded_z = (point.z * 1000.0).round() / 1000.0;
+
+    let x = (rounded_x * 1.0 / snap_resolution).floor() / (1.0 / snap_resolution);
+    let y = (rounded_y * 1.0 / snap_resolution).floor() / (1.0 / snap_resolution);
+    let z = (rounded_z * 1.0 / snap_resolution).floor() / (1.0 / snap_resolution);
+
+    Vec3::new(x, y, z)
+}
 
 #[derive(Component)]
 pub struct BuildMarker;
 
 pub fn move_build_marker(
-    mut marker_query: Query<&mut Transform, With<BuildMarker>>,
-    transform_query: Query<&Transform, Without<BuildMarker>>,
-    intersection_query: Query<&RaycastSource<PickingRaycastSet>>
+    mut marker_query: Query<(&mut Transform, &ShapeHandle), With<BuildMarker>>,
+    windows: Res<Windows>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    rapier_context: Res<RapierContext>,
+    shapes: Res<Shapes>
 ) {
-    let mut marker_transform = match marker_query.iter_mut().next() {
-        Some(transform) => transform,
+    let (mut marker_transform, shape_handle) = match marker_query.iter_mut().next() {
+        Some(x) => x,
         None => { return; }
     };
 
-    if let Some((entity, data)) = intersection_query.iter().next().unwrap().get_nearest_intersection() {
-        if let Ok(origin_shape_transform) = transform_query.get(entity) {
-            let new_translation = origin_shape_transform.translation + data.normal();
-            marker_transform.translation = new_translation;
+    let window = match windows.get_primary() {
+        Some(window) => window,
+        None => { return; }
+    };
+    let cursor_position = match window.cursor_position() {
+        Some(pos) => pos,
+        // Cursor is outside of the window
+        None => { return; }
+    };
+
+    let (camera, camera_transform) = match camera_query.iter().next() {
+        Some(x) => x,
+        None => { return; }
+    };
+
+    if let Some(cursor_ray) = camera.viewport_to_world(camera_transform, cursor_position) {
+        if let Some((_, intersection)) = rapier_context.cast_ray_and_get_normal(
+            cursor_ray.origin,
+            cursor_ray.direction,
+            500.0,
+            true,
+            QueryFilter::new().exclude_sensors()
+        ) {
+            let snapped_intersection = snap_to_grid(intersection.point, VOXEL_SIZE);// + Vec3::splat(0.05);
+            
+            let shape = shapes.get(shape_handle).unwrap();
+
+            let rotated_center = marker_transform.rotation.mul_vec3(shape.center()).abs();
+            
+            // If the side length is odd, you need to add VOXEL_SIZE / 2.0 as an offset to center it
+            let mut odd_offset = Vec3::splat(0.0);
+            if shape.width() % 2 == 1 {
+                odd_offset.x += VOXEL_SIZE / 2.0;
+            }
+            if shape.height() % 2 == 1 {
+                odd_offset.y += VOXEL_SIZE / 2.0;
+            }
+            if shape.depth() % 2 == 1 {
+                odd_offset.z += VOXEL_SIZE / 2.0;
+            }
+            odd_offset = marker_transform.rotation.mul_vec3(odd_offset).abs();
+
+            debug!("Snapped intersection = {:?}, Normal = {:?}, Rotated Center = {:?}, Rotated Offsets = {:?}", snapped_intersection, intersection.normal, rotated_center, odd_offset);
+
+            marker_transform.translation = snapped_intersection + intersection.normal * rotated_center + odd_offset * (Vec3::splat(1.0) - intersection.normal.abs());
         }
     }
 }
@@ -160,7 +217,7 @@ pub fn spawn_shape(
     commands: &mut Commands,
     mesh_handles: &mut MeshHandles,
     meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
+    materials: &mut Assets<BuildingMaterial>,
     shapes: &Shapes,
     shape_handle: ShapeHandle,
     transform: Transform,
@@ -169,30 +226,21 @@ pub fn spawn_shape(
 ) -> Entity {
     let shape = shapes.get(&shape_handle).unwrap();
 
-    let mesh_handle = match mesh_handles.get(&shape_handle.id()) {
-        Some(mesh_handle) => mesh_handle.clone(),
-        None => {
-            let mesh = generate_shape_mesh(shape);
+    let mesh_handle = get_mesh_or_generate(shape_handle.id(), shape, mesh_handles, meshes);
 
-            let mesh_handle = meshes.add(mesh);
-            mesh_handles.add(shape_handle.id(), mesh_handle.clone());
-
-            mesh_handle
-        }
-    };
-
-    let shape_entity = commands.spawn(PbrBundle {
+    let shape_half_extents = shape.center();
+    let shape_entity = commands.spawn(MaterialMeshBundle::<BuildingMaterial> {
             mesh: mesh_handle,
-            material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
+            material: materials.add(BuildingMaterial { color: Color::rgb(0.0, 0.3, 0.5).into() }),
             transform,
             ..Default::default()
         })
         .insert(shape_handle)
         .insert(shape_network_id)
         .insert(Collider::cuboid(
-            shape.width() as f32 * VOXEL_SIZE / 2.0, 
-            shape.height() as f32 * VOXEL_SIZE / 2.0,
-            shape.depth() as f32 * VOXEL_SIZE / 2.0
+            shape_half_extents.x, 
+            shape_half_extents.y,
+            shape_half_extents.z
         ))
         .insert(PickableBundle::default())
         .id();
@@ -207,7 +255,7 @@ pub fn place_shapes(
     mut commands: Commands,
     mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<BuildingMaterial>>,
     shapes: Res<Shapes>,
     body_query: Query<(Entity, &NetworkId)>
 ) {

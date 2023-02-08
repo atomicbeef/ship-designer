@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use bevy::log::debug;
-use bevy::prelude::{Component, Resource, EventWriter, ResMut};
+use bevy::prelude::{Component, Resource, EventWriter, ResMut, Vec3};
 use bevy::reflect::Reflect;
 use bevy::utils::{hashbrown::hash_map, HashMap};
 use crossbeam_channel::{Sender, Receiver};
@@ -98,6 +98,14 @@ impl Shape {
             voxels: self.voxels.clone(),
             parent_shape_id: Some(parent_shape_id)
         }
+    }
+
+    pub fn center(&self) -> Vec3 {
+        Vec3::new(
+            self.width as f32 / 2.0 * VOXEL_SIZE,
+            self.height as f32 / 2.0 * VOXEL_SIZE,
+            self.depth as f32 / 2.0 * VOXEL_SIZE
+        )
     }
 }
 

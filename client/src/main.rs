@@ -6,18 +6,20 @@ use bevy::window::WindowClosed;
 use bevy_mod_picking::{DefaultPickingPlugins, DebugCursorPickingPlugin, PickingCameraBundle};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
+use building_material::BuildingMaterial;
 use common::player::Players;
 use iyes_loopless::prelude::*;
-use mesh_generation::{RegenerateShapeMesh, regenerate_shape_mesh};
+use mesh_generation::{RegenerateShapeMesh, regenerate_shape_mesh, get_mesh_or_generate};
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::predefined_shapes::add_hardcoded_shapes;
-use common::shape::{Shapes, FreedShapes, free_shapes};
+use common::shape::{Shapes, ShapeId, FreedShapes, free_shapes};
 
 mod building;
+mod building_material;
 mod camera;
 mod connection_state;
 mod meshes;
@@ -75,6 +77,7 @@ fn main() {
         .add_plugin(WorldInspectorPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(MaterialPlugin::<BuildingMaterial>::default())
         .insert_resource(connection_state)
         .insert_resource(Players::new())
         .insert_resource(Shapes::new())
@@ -122,6 +125,7 @@ fn setup(
     mut shapes: ResMut<Shapes>,
     mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands
 ) {
     let shape_handles = add_hardcoded_shapes(&mut shapes);
@@ -140,7 +144,23 @@ fn setup(
     .insert(FreeCamera)
     .insert(PickingCameraBundle::default());
 
-    commands.spawn(BuildMarker).insert(TransformBundle::IDENTITY);
+    let marker_shape_handle = shapes.get_handle(ShapeId::from(1));
+    let marker_shape = shapes.get(&marker_shape_handle).unwrap();
+    let marker_half_extents = marker_shape.center();
+
+    commands.spawn(BuildMarker)
+        .insert(PbrBundle {
+            mesh: get_mesh_or_generate(marker_shape_handle.id(), marker_shape, &mut mesh_handles, &mut meshes),
+            material: materials.add(Color::rgba(0.25, 0.62, 0.26, 0.5).into()),
+            ..Default::default()
+        })
+        .insert(marker_shape_handle)
+        .insert(Collider::cuboid(
+            marker_half_extents.x,
+            marker_half_extents.y,
+            marker_half_extents.z
+        ))
+        .insert(Sensor);
 }
 
 fn disconnect_on_esc(

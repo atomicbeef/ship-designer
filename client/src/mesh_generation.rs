@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
-use common::shape::{Shape, ShapeHandle, Shapes, VOXEL_SIZE};
+use common::shape::{Shape, ShapeHandle, Shapes, VOXEL_SIZE, ShapeId};
 use common::materials::Material;
 
 use crate::meshes::MeshHandles;
@@ -13,6 +13,7 @@ pub fn generate_shape_mesh(
     let mut vertices: Vec<[f32; 3]> = Vec::new();
     let mut triangles: Vec<u32> = Vec::new();
     let mut normals: Vec<[f32; 3]> = Vec::new();
+    let mut uvs: Vec<[f32; 2]> = Vec::new();
 
     for s_x in 0..shape.width() {
         for s_y in 0..shape.height() {
@@ -35,6 +36,10 @@ pub fn generate_shape_mesh(
                 normals.push([0.0, 0.0, 1.0]);
                 normals.push([0.0, 0.0, 1.0]);
                 normals.push([0.0, 0.0, 1.0]);
+                uvs.push([0.0, 1.0]);
+                uvs.push([0.0, 0.0]);
+                uvs.push([1.0, 0.0]);
+                uvs.push([1.0, 1.0]);
 
                 // Front triangles
                 triangles.extend([vertex_index_offset + 2, vertex_index_offset + 1, vertex_index_offset]);
@@ -49,6 +54,10 @@ pub fn generate_shape_mesh(
                 normals.push([-1.0, 0.0, 0.0]);
                 normals.push([-1.0, 0.0, 0.0]);
                 normals.push([-1.0, 0.0, 0.0]);
+                uvs.push([0.0, 1.0]);
+                uvs.push([0.0, 0.0]);
+                uvs.push([1.0, 0.0]);
+                uvs.push([1.0, 1.0]);
 
                 // Left triangles
                 triangles.extend([vertex_index_offset + 5, vertex_index_offset + 4, vertex_index_offset + 7]);
@@ -63,6 +72,10 @@ pub fn generate_shape_mesh(
                 normals.push([0.0, 1.0, 0.0]);
                 normals.push([0.0, 1.0, 0.0]);
                 normals.push([0.0, 1.0, 0.0]);
+                uvs.push([0.0, 1.0]);
+                uvs.push([0.0, 0.0]);
+                uvs.push([1.0, 0.0]);
+                uvs.push([1.0, 1.0]);
 
                 // Top faces
                 triangles.extend([vertex_index_offset + 9, vertex_index_offset + 8, vertex_index_offset + 11]);
@@ -77,6 +90,10 @@ pub fn generate_shape_mesh(
                 normals.push([0.0, 0.0, -1.0]);
                 normals.push([0.0, 0.0, -1.0]);
                 normals.push([0.0, 0.0, -1.0]);
+                uvs.push([0.0, 0.0]);
+                uvs.push([0.0, 1.0]);
+                uvs.push([1.0, 0.0]);
+                uvs.push([1.0, 1.0]);
 
                 // Back faces
                 triangles.extend([vertex_index_offset + 15, vertex_index_offset + 13, vertex_index_offset + 12]);
@@ -91,6 +108,10 @@ pub fn generate_shape_mesh(
                 normals.push([1.0, 0.0, 0.0]);
                 normals.push([1.0, 0.0, 0.0]);
                 normals.push([1.0, 0.0, 0.0]);
+                uvs.push([0.0, 1.0]);
+                uvs.push([0.0, 0.0]);
+                uvs.push([1.0, 0.0]);
+                uvs.push([1.0, 1.0]);
 
                 // Right faces
                 triangles.extend([vertex_index_offset + 17, vertex_index_offset + 16, vertex_index_offset + 19]);
@@ -105,6 +126,10 @@ pub fn generate_shape_mesh(
                 normals.push([0.0, -1.0, 0.0]);
                 normals.push([0.0, -1.0, 0.0]);
                 normals.push([0.0, -1.0, 0.0]);
+                uvs.push([0.0, 1.0]);
+                uvs.push([0.0, 0.0]);
+                uvs.push([1.0, 0.0]);
+                uvs.push([1.0, 1.0]);
 
                 // Bottom faces
                 triangles.extend([vertex_index_offset + 20, vertex_index_offset + 21, vertex_index_offset + 22]);
@@ -123,6 +148,7 @@ pub fn generate_shape_mesh(
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.set_indices(Some(Indices::U32(triangles)));
 
     mesh
@@ -149,6 +175,25 @@ pub fn regenerate_shape_mesh(
                 commands.entity(request.0).remove::<Handle<Mesh>>();
                 commands.entity(request.0).insert(mesh_handle);
             }
+        }
+    }
+}
+
+pub fn get_mesh_or_generate(
+    shape_id: ShapeId,
+    shape: &Shape,
+    mesh_handles: &mut MeshHandles,
+    meshes: &mut Assets<Mesh>
+) -> Handle<Mesh> {
+    match mesh_handles.get(&shape_id) {
+        Some(mesh_handle) => mesh_handle.clone(),
+        None => {
+            let mesh = generate_shape_mesh(shape);
+
+            let mesh_handle = meshes.add(mesh);
+            mesh_handles.add(shape_id, mesh_handle.clone());
+
+            mesh_handle
         }
     }
 }

@@ -7,6 +7,7 @@ use common::shape::{Shapes, ShapeNetworkRepr, ShapeId};
 use common::ship::Ship;
 
 use crate::building::spawn_shape;
+use crate::building_material::BuildingMaterial;
 use crate::meshes::MeshHandles;
 
 pub fn player_connected(
@@ -36,7 +37,7 @@ pub fn initial_state_setup(
     mut commands: Commands,
     mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<BuildingMaterial>>,
     mut players: ResMut<Players>,
     mut initial_state_reader: EventReader<InitialState>,
     mut shapes: ResMut<Shapes>
