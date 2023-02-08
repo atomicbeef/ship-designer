@@ -1,7 +1,6 @@
 use core::f32::consts::PI;
 
 use bevy::input::mouse::MouseButton;
-use bevy_mod_picking::{PickableBundle, PickingRaycastSet, RaycastSource};
 use bevy::prelude::*;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
@@ -18,6 +17,7 @@ use crate::building_material::BuildingMaterial;
 use crate::connection_state::ConnectionState;
 use crate::mesh_generation::{RegenerateShapeMesh, get_mesh_or_generate};
 use crate::meshes::MeshHandles;
+use crate::raycast_selection::{SelectionSource, Selectable};
 
 fn snap_to_grid(point: Vec3, snap_resolution: f32) -> Vec3 {
     // This extra rounding smoothes out any jittering
@@ -37,9 +37,7 @@ pub struct BuildMarker;
 
 pub fn move_build_marker(
     mut marker_query: Query<(&mut Transform, &ShapeHandle), With<BuildMarker>>,
-    windows: Res<Windows>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    rapier_context: Res<RapierContext>,
+    selection_source_query: Query<&SelectionSource>,
     shapes: Res<Shapes>
 ) {
     let (mut marker_transform, shape_handle) = match marker_query.iter_mut().next() {
@@ -47,29 +45,8 @@ pub fn move_build_marker(
         None => { return; }
     };
 
-    let window = match windows.get_primary() {
-        Some(window) => window,
-        None => { return; }
-    };
-    let cursor_position = match window.cursor_position() {
-        Some(pos) => pos,
-        // Cursor is outside of the window
-        None => { return; }
-    };
-
-    let (camera, camera_transform) = match camera_query.iter().next() {
-        Some(x) => x,
-        None => { return; }
-    };
-
-    if let Some(cursor_ray) = camera.viewport_to_world(camera_transform, cursor_position) {
-        if let Some((_, intersection)) = rapier_context.cast_ray_and_get_normal(
-            cursor_ray.origin,
-            cursor_ray.direction,
-            500.0,
-            true,
-            QueryFilter::new().exclude_sensors()
-        ) {
+    if let Some(selection_source) = selection_source_query.iter().next() {
+        if let Some((_, intersection)) = selection_source.intersection() {
             let snapped_intersection = snap_to_grid(intersection.point, VOXEL_SIZE);// + Vec3::splat(0.05);
             
             let shape = shapes.get(shape_handle).unwrap();
@@ -135,7 +112,7 @@ pub fn build_request_events(
     keys: Res<Input<KeyCode>>,
     mut place_shape_request_writer: EventWriter<PlaceShapeRequest>,
     mut delete_shape_request_writer: EventWriter<DeleteShapeRequest>,
-    intersection_query: Query<&RaycastSource<PickingRaycastSet>>,
+    selection_source_query: Query<&SelectionSource>,
     mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
     mut shapes: ResMut<Shapes>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
@@ -143,50 +120,55 @@ pub fn build_request_events(
     marker_query: Query<&Transform, With<BuildMarker>>,
     network_id_query: Query<&NetworkId>
 ) {
+    let (entity, intersection_data) = match selection_source_query.iter().next() {
+        Some(source) => match source.intersection() {
+            Some(data) => data,
+            None => { return; }
+        },
+        None => { return; }
+    };
+
     if mouse_buttons.just_pressed(MouseButton::Left) {
-        let intersection_data = intersection_query.iter().next().unwrap().get_nearest_intersection();
-        if let Some((entity, data)) = intersection_data {
-            // Block deletion
-            if keys.pressed(KeyCode::LAlt) {
-                let network_id = network_id_query.get(entity).unwrap();
-                delete_shape_request_writer.send(DeleteShapeRequest(*network_id));
-            // Voxel deletion
-            } else if keys.pressed(KeyCode::LControl) {
-                if let Ok((shape_transform, mut shape_handle)) = voxel_intersection_query.get_mut(entity) {
-                    let transform_affine = shape_transform.affine();
-                    let inverse = shape_transform.affine().inverse();
-                    
-                    let transform_matrix;
-                    if inverse.is_finite() {
-                        transform_matrix = inverse;
-                    } else {
-                        debug!("[Voxel deletion] Uninvertible transform matrix: {}", transform_affine);
-                        transform_matrix = transform_affine;
-                    }
-
-                    let voxel_pos = transform_matrix.transform_point3(data.position());
-                    debug!(?data);
-                    debug!(?voxel_pos);
-                    
-                    let shape = shapes.get_mut(&mut shape_handle).unwrap();
-
-                    shape.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
-
-                    regenerate_shape_mesh_writer.send(RegenerateShapeMesh(entity));
+        // Block deletion
+        if keys.pressed(KeyCode::LAlt) {
+            let network_id = network_id_query.get(entity).unwrap();
+            delete_shape_request_writer.send(DeleteShapeRequest(*network_id));
+        // Voxel deletion
+        } else if keys.pressed(KeyCode::LControl) {
+            if let Ok((shape_transform, mut shape_handle)) = voxel_intersection_query.get_mut(entity) {
+                let transform_affine = shape_transform.affine();
+                let inverse = shape_transform.affine().inverse();
+                
+                let transform_matrix;
+                if inverse.is_finite() {
+                    transform_matrix = inverse;
+                } else {
+                    debug!("[Voxel deletion] Uninvertible transform matrix: {}", transform_affine);
+                    transform_matrix = transform_affine;
                 }
-            // Block placement
-            } else {
-                if let Ok(body) = placement_query.get(entity) {
-                    if let Some(marker_transform) = marker_query.iter().next() {
-                        let shape_id = ShapeId::from(1);
-                        let shape_transform = ShapeTransform::from(*marker_transform);
-    
-                        place_shape_request_writer.send(PlaceShapeRequest {
-                            shape_id,
-                            shape_transform,
-                            body_network_id: *network_id_query.get(body.get()).unwrap()
-                        });
-                    }
+
+                let voxel_pos = transform_matrix.transform_point3(intersection_data.point);
+                debug!(?intersection_data);
+                debug!(?voxel_pos);
+                
+                let shape = shapes.get_mut(&mut shape_handle).unwrap();
+
+                shape.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
+
+                regenerate_shape_mesh_writer.send(RegenerateShapeMesh(entity));
+            }
+        // Block placement
+        } else {
+            if let Ok(body) = placement_query.get(entity) {
+                if let Some(marker_transform) = marker_query.iter().next() {
+                    let shape_id = ShapeId::from(1);
+                    let shape_transform = ShapeTransform::from(*marker_transform);
+
+                    place_shape_request_writer.send(PlaceShapeRequest {
+                        shape_id,
+                        shape_transform,
+                        body_network_id: *network_id_query.get(body.get()).unwrap()
+                    });
                 }
             }
         }
@@ -242,7 +224,7 @@ pub fn spawn_shape(
             shape_half_extents.y,
             shape_half_extents.z
         ))
-        .insert(PickableBundle::default())
+        .insert(Selectable)
         .id();
     
     commands.entity(body).add_child(shape_entity);
