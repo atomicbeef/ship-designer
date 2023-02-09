@@ -4,7 +4,7 @@ use uflow::SendMode;
 
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
-use common::network_id::{NetworkId, entity_from_network_id};
+use common::network_id::{NetworkId, NetworkIdIndex,};
 use common::packets::Packet;
 use common::shape::{Shapes, ShapeHandle};
 
@@ -35,7 +35,7 @@ pub fn confirm_place_shape_requests(
     mut commands: Commands,
     mut network_id_generator: ResMut<NetworkIdGenerator>,
     shapes: Res<Shapes>,
-    body_query: Query<(Entity, &NetworkId)>
+    network_id_index: Res<NetworkIdIndex>
 ) {
     for place_shape_request in place_shape_request_reader.iter() {
         // TODO: Prevent shapes from being placed inside of each other
@@ -43,7 +43,7 @@ pub fn confirm_place_shape_requests(
         // Spawn shape
         let network_id = network_id_generator.generate();
         let shape_handle = shapes.get_handle(place_shape_request.shape_id);
-        let body = entity_from_network_id(body_query.iter(), place_shape_request.body_network_id).unwrap();
+        let body = network_id_index.entity(&place_shape_request.body_network_id).unwrap();
 
         spawn_shape(
             &mut commands,

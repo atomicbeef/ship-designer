@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
 
-use common::network_id::{NetworkId, entity_from_network_id};
+use common::network_id::{NetworkId, NetworkIdIndex};
 use common::shape_transform::ShapeTransform;
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
@@ -65,8 +65,6 @@ pub fn move_build_marker(
                 odd_offset.z += VOXEL_SIZE / 2.0;
             }
             odd_offset = marker_transform.rotation.mul_vec3(odd_offset).abs();
-
-            debug!("Snapped intersection = {:?}, Normal = {:?}, Rotated Center = {:?}, Rotated Offsets = {:?}", snapped_intersection, intersection.normal, rotated_center, odd_offset);
 
             marker_transform.translation = snapped_intersection + intersection.normal * rotated_center + odd_offset * (Vec3::splat(1.0) - intersection.normal.abs());
         }
@@ -239,7 +237,7 @@ pub fn place_shapes(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<BuildingMaterial>>,
     shapes: Res<Shapes>,
-    body_query: Query<(Entity, &NetworkId)>
+    network_id_index: Res<NetworkIdIndex>
 ) {
     for event in place_shape_command_reader.iter() {
         let transform = Transform::from(event.transform);
@@ -252,7 +250,7 @@ pub fn place_shapes(
             shapes.get_handle(event.shape_id),
             transform,
             event.shape_network_id,
-            entity_from_network_id(body_query.iter(), event.body_network_id).unwrap()
+            network_id_index.entity(&event.body_network_id).unwrap()
         );
         
         debug!("Spawned shape with entity ID {:?}", entity);

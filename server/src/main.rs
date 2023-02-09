@@ -6,6 +6,7 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
+use common::network_id::{update_index, NetworkIdIndex};
 use common::player::Players;
 use common::ship::Ship;
 use iyes_loopless::prelude::*;
@@ -52,6 +53,7 @@ fn main() {
         .insert_resource(NetworkIdGenerator::new())
         .insert_resource(Shapes::new())
         .insert_resource(Players::new())
+        .insert_resource(NetworkIdIndex::new())
         .add_event::<FreedShapes>()
         .add_event::<PlaceShapeRequest>()
         .add_event::<PlaceShapeCommand>()
@@ -74,6 +76,7 @@ fn main() {
         .add_system(send_delete_shape_commands)
         .add_system(send_player_connected)
         .add_system(send_player_disconnected)
+        .add_system_to_stage(CoreStage::PostUpdate, update_index)
         .run();
 }
 
