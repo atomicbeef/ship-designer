@@ -21,13 +21,13 @@ use crate::raycast_selection::{SelectionSource, Selectable};
 
 fn snap_to_grid(point: Vec3, snap_resolution: f32) -> Vec3 {
     // This extra rounding smoothes out any jittering
-    let rounded_x = (point.x * 1000.0).round() / 1000.0;
-    let rounded_y = (point.y * 1000.0).round() / 1000.0;
-    let rounded_z = (point.z * 1000.0).round() / 1000.0;
+    let rounded_x = (point.x * 1000.0).round();
+    let rounded_y = (point.y * 1000.0).round();
+    let rounded_z = (point.z * 1000.0).round();
 
-    let x = (rounded_x * 1.0 / snap_resolution).floor() / (1.0 / snap_resolution);
-    let y = (rounded_y * 1.0 / snap_resolution).floor() / (1.0 / snap_resolution);
-    let z = (rounded_z * 1.0 / snap_resolution).floor() / (1.0 / snap_resolution);
+    let x = (rounded_x * 1.0 / (snap_resolution * 1000.0)).floor() / (1.0 / snap_resolution);
+    let y = (rounded_y * 1.0 / (snap_resolution * 1000.0)).floor() / (1.0 / snap_resolution);
+    let z = (rounded_z * 1.0 / (snap_resolution * 1000.0)).floor() / (1.0 / snap_resolution);
 
     Vec3::new(x, y, z)
 }
@@ -47,7 +47,7 @@ pub fn move_build_marker(
 
     if let Some(selection_source) = selection_source_query.iter().next() {
         if let Some((_, intersection)) = selection_source.intersection() {
-            let snapped_intersection = snap_to_grid(intersection.point, VOXEL_SIZE);// + Vec3::splat(0.05);
+            let snapped_intersection = snap_to_grid(intersection.point, VOXEL_SIZE);
             
             let shape = shapes.get(shape_handle).unwrap();
 
