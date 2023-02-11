@@ -223,6 +223,10 @@ impl Shapes {
         ShapeHandle { id: shape_id, channel: self.handle_dropped_channels.0.clone() }
     }
 
+    pub fn get_shape_from_id(&self, shape_id: ShapeId) -> Option<&Shape> {
+        self.shapes.get(&shape_id)
+    }
+
     pub fn get(&self, shape_handle: &ShapeHandle) -> Option<&Shape> {
         self.shapes.get(&shape_handle.id)
     }

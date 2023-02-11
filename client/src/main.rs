@@ -149,7 +149,8 @@ fn setup(
 
     let marker_shape_handle = shapes.get_handle(ShapeId::from(1));
     let marker_shape = shapes.get(&marker_shape_handle).unwrap();
-    let marker_half_extents = marker_shape.center();
+    // If we use exactly the shape bounds, then we can't place shapes next to each other
+    let marker_half_extents = marker_shape.center() - Vec3::splat(0.01);
 
     commands.spawn(BuildMarker)
         .insert(PbrBundle {

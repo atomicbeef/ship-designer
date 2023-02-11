@@ -115,8 +115,9 @@ pub fn build_request_events(
     mut shapes: ResMut<Shapes>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
     placement_query: Query<&Parent>,
-    marker_query: Query<&Transform, With<BuildMarker>>,
-    network_id_query: Query<&NetworkId>
+    marker_query: Query<(&Transform, &Collider), With<BuildMarker>>,
+    network_id_query: Query<&NetworkId>,
+    rapier_context: Res<RapierContext>
 ) {
     let (entity, intersection_data) = match selection_source_query.iter().next() {
         Some(source) => match source.intersection() {
@@ -158,15 +159,22 @@ pub fn build_request_events(
         // Block placement
         } else {
             if let Ok(body) = placement_query.get(entity) {
-                if let Some(marker_transform) = marker_query.iter().next() {
-                    let shape_id = ShapeId::from(1);
-                    let shape_transform = ShapeTransform::from(*marker_transform);
-
-                    place_shape_request_writer.send(PlaceShapeRequest {
-                        shape_id,
-                        shape_transform,
-                        body_network_id: *network_id_query.get(body.get()).unwrap()
-                    });
+                if let Some((marker_transform, marker_collider)) = marker_query.iter().next() {
+                    if rapier_context.intersection_with_shape(
+                        marker_transform.translation,
+                        marker_transform.rotation,
+                        marker_collider,
+                        QueryFilter::new().exclude_sensors()
+                    ).is_none() {
+                        let shape_id = ShapeId::from(1);
+                        let shape_transform = ShapeTransform::from(*marker_transform);
+    
+                        place_shape_request_writer.send(PlaceShapeRequest {
+                            shape_id,
+                            shape_transform,
+                            body_network_id: *network_id_query.get(body.get()).unwrap()
+                        });
+                    }
                 }
             }
         }

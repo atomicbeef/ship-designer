@@ -1,4 +1,7 @@
+use bevy::ecs::system::Command;
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::*;
+use bevy_rapier3d::prelude::systems::init_colliders;
 use common::player::Players;
 use uflow::SendMode;
 
@@ -14,14 +17,22 @@ use crate::server_state::ServerState;
 pub fn spawn_shape(
     commands: &mut Commands,
     shape_handle: ShapeHandle,
-    transform: Transform,
+    transform: TransformBundle,
     shape_network_id: NetworkId,
+    shapes: &Shapes,
     body: Entity
 ) -> Entity {
-    let shape_entity = commands.spawn_empty()
-        .insert(shape_handle)
+    let shape = shapes.get(&shape_handle).unwrap();
+    let shape_half_extents = shape.center();
+
+    let shape_entity = commands.spawn(shape_handle)
         .insert(shape_network_id)
         .insert(transform)
+        .insert(Collider::cuboid(
+            shape_half_extents.x, 
+            shape_half_extents.y,
+            shape_half_extents.z
+        ))
         .id();
     
     commands.entity(body).add_child(shape_entity);
@@ -30,35 +41,71 @@ pub fn spawn_shape(
 }
 
 pub fn confirm_place_shape_requests(
-    mut place_shape_request_reader: EventReader<PlaceShapeRequest>,
-    mut send_place_shape_writer: EventWriter<PlaceShapeCommand>,
-    mut commands: Commands,
-    mut network_id_generator: ResMut<NetworkIdGenerator>,
-    shapes: Res<Shapes>,
-    network_id_index: Res<NetworkIdIndex>
+    world: &mut World,
 ) {
-    for place_shape_request in place_shape_request_reader.iter() {
-        // TODO: Prevent shapes from being placed inside of each other
+    let place_shape_requests: Vec<PlaceShapeRequest> = world.get_resource_mut::<Events<PlaceShapeRequest>>()
+        .unwrap()
+        .drain()
+        .collect();
 
-        // Spawn shape
-        let network_id = network_id_generator.generate();
-        let shape_handle = shapes.get_handle(place_shape_request.shape_id);
-        let body = network_id_index.entity(&place_shape_request.body_network_id).unwrap();
+    for place_shape_request in place_shape_requests {
+        let body = world.get_resource::<NetworkIdIndex>().unwrap().entity(&place_shape_request.body_network_id).unwrap();
+        let shape_transform = Transform::from(place_shape_request.shape_transform);
 
-        spawn_shape(
-            &mut commands,
-            shape_handle,
-            Transform::from(place_shape_request.shape_transform),
-            network_id,
-            body
-        );
+        let shape_handle;
+        let shape_center;
 
-        send_place_shape_writer.send(PlaceShapeCommand {
-            shape_id: place_shape_request.shape_id,
-            shape_network_id: network_id,
-            transform: place_shape_request.shape_transform,
-            body_network_id: place_shape_request.body_network_id
-        });
+        {
+            let shapes = world.get_resource::<Shapes>().unwrap();
+            shape_handle = shapes.get_handle(place_shape_request.shape_id);
+            shape_center = shapes.get(&shape_handle).unwrap().center();
+        }
+
+        // Prevent shapes from being placed inside of each other
+        let shape_half_extents = shape_center - Vec3::splat(0.01);
+        let rapier_context = world.get_resource::<RapierContext>().unwrap();
+
+        if rapier_context.cast_shape(
+            shape_transform.translation,
+            shape_transform.rotation,
+            Vec3::splat(0.0001),
+            &Collider::cuboid(
+                shape_half_extents.x,
+                shape_half_extents.y,
+                shape_half_extents.z
+            ),
+            0.01,
+            QueryFilter::default()
+        ).is_none() {
+            let shape_handle = world.get_resource::<Shapes>().unwrap().get_handle(place_shape_request.shape_id);
+            let network_id = world.get_resource_mut::<NetworkIdGenerator>().unwrap().generate();
+
+            let shape_entity = world.spawn(shape_handle)
+                .insert(network_id)
+                .insert(shape_transform)
+                .insert(Collider::cuboid(
+                    shape_center.x,
+                    shape_center.y,
+                    shape_center.z
+                ))
+                .id();
+        
+            (AddChild { parent: body, child: shape_entity }).write(world);
+
+            let mut place_shape_events = world.get_resource_mut::<Events<PlaceShapeCommand>>().unwrap();
+            place_shape_events.send(PlaceShapeCommand {
+                shape_id: place_shape_request.shape_id,
+                shape_network_id: network_id,
+                transform: place_shape_request.shape_transform,
+                body_network_id: place_shape_request.body_network_id
+            });
+
+            // Update colliders in Rapier
+            SystemStage::single(init_colliders).run(world);
+            world.resource_scope(|_, mut rapier_context: Mut<RapierContext>| {
+                rapier_context.update_query_pipeline();
+            });
+        }
     }
 }
 

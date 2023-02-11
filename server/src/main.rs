@@ -18,7 +18,7 @@ mod packet_handling;
 mod player_connection_event_systems;
 mod server_state;
 
-use building_systems::{send_place_shape_commands, send_delete_shape_commands};
+use building_systems::{send_place_shape_commands, send_delete_shape_commands, spawn_shape};
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
 use common::shape::{Shapes, ShapeId, free_shapes, FreedShapes};
@@ -115,12 +115,13 @@ fn setup(
         .insert(network_id_generator.generate())
         .insert(Ship)
         .id();
-
-    let shape = commands.spawn_empty()
-        .insert(shapes.get_handle(ShapeId::from(0)))
-        .insert(network_id_generator.generate())
-        .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
-        .id();
     
-    commands.entity(body).add_child(shape);
+    spawn_shape(
+        &mut commands,
+        shapes.get_handle(ShapeId::from(0)),
+        TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)),
+        network_id_generator.generate(),
+        &mut shapes,
+        body
+    );
 }
