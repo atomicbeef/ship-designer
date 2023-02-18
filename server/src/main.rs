@@ -109,7 +109,12 @@ fn setup(
 
     let body = commands.spawn(RigidBody::Dynamic)
         .insert(VisibilityBundle::default())
-        .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
+        .insert(TransformBundle::from_transform(Transform {
+            translation: Vec3::new(1.0, -1.0, 1.0),
+            rotation: Quat::IDENTITY,
+            //rotation: Quat::from_xyzw(0.002, 0.612, -0.204, -0.764).normalize(),
+            scale: Vec3::splat(1.0)
+        }))
         .insert(Velocity::default())
         .insert(GravityScale(0.0))
         .insert(network_id_generator.generate())

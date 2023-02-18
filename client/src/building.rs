@@ -2,11 +2,12 @@ use core::f32::consts::PI;
 
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
+use common::reparent_global_transform::ReparentGlobalTransform;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
 
 use common::network_id::{NetworkId, NetworkIdIndex};
-use common::shape_transform::ShapeTransform;
+use common::compact_transform::CompactTransform;
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::materials::Material;
@@ -35,23 +36,28 @@ fn snap_to_grid(point: Vec3, snap_resolution: f32) -> Vec3 {
 #[derive(Component)]
 pub struct BuildMarker;
 
+#[derive(Component)]
+pub struct BuildMarkerOrientation(pub Quat);
+
 pub fn move_build_marker(
-    mut marker_query: Query<(&mut Transform, &ShapeHandle), With<BuildMarker>>,
+    mut marker_query: Query<(&mut Transform, &BuildMarkerOrientation, &ShapeHandle), With<BuildMarker>>,
+    body_transform_query: Query<&GlobalTransform>,
+    parent_query: Query<&Parent>,
     selection_source_query: Query<&SelectionSource>,
     shapes: Res<Shapes>
 ) {
-    let (mut marker_transform, shape_handle) = match marker_query.iter_mut().next() {
+    let (mut marker_transform, marker_orientation, shape_handle) = match marker_query.iter_mut().next() {
         Some(x) => x,
         None => { return; }
     };
 
     if let Some(selection_source) = selection_source_query.iter().next() {
-        if let Some((_, intersection)) = selection_source.intersection() {
-            let snapped_intersection = snap_to_grid(intersection.point, VOXEL_SIZE);
-            
+        if let Some((collider, intersection)) = selection_source.intersection() {
+            let body = parent_query.get(collider).unwrap().get();
+
             let shape = shapes.get(shape_handle).unwrap();
 
-            let rotated_center = marker_transform.rotation.mul_vec3(shape.center()).abs();
+            let rotated_center = marker_orientation.0.mul_vec3(shape.center()).abs();
             
             // If the side length is odd, you need to add VOXEL_SIZE / 2.0 as an offset to center it
             let mut odd_offset = Vec3::splat(0.0);
@@ -64,44 +70,58 @@ pub fn move_build_marker(
             if shape.depth() % 2 == 1 {
                 odd_offset.z += VOXEL_SIZE / 2.0;
             }
-            odd_offset = marker_transform.rotation.mul_vec3(odd_offset).abs();
+            odd_offset = marker_orientation.0.mul_vec3(odd_offset).abs();
 
-            marker_transform.translation = snapped_intersection + intersection.normal * rotated_center + odd_offset * (Vec3::splat(1.0) - intersection.normal.abs());
+            let body_transform = body_transform_query.get(body).unwrap();
+
+            // Transform the point to make the calculation easier
+            let body_transform_affine = body_transform.affine();
+            let body_transform_inverse = body_transform_affine.inverse();
+
+            let inverse_intersection = snap_to_grid(body_transform_inverse.transform_point3(intersection.point), VOXEL_SIZE);
+            let inverse_normal = body_transform_inverse.transform_vector3(intersection.normal);
+
+            let inverse_center = inverse_intersection + inverse_normal * rotated_center + odd_offset * (Vec3::splat(1.0) - inverse_normal.abs());
+
+            marker_transform.translation = body_transform_affine.transform_point3(inverse_center);
+            
+            let (_, body_rotation, _) = body_transform.to_scale_rotation_translation();
+            marker_transform.rotation = body_rotation.mul_quat(marker_orientation.0);
         }
     }
 }
 
 pub fn rotate_build_marker(
-    mut marker_query: Query<&mut Transform, With<BuildMarker>>,
+    mut marker_query: Query<&mut BuildMarkerOrientation, With<BuildMarker>>,
     keys: Res<Input<KeyCode>>
 ) {
-    let mut marker_transform = match marker_query.iter_mut().next() {
+    let mut marker_orientation = match marker_query.iter_mut().next() {
         Some(transform) => transform,
         None => { return; }
     };
 
     if keys.just_pressed(KeyCode::J) {
-        marker_transform.rotate_x(PI / 2.0);
+        marker_orientation.0 = marker_orientation.0.mul_quat(Quat::from_rotation_x(PI / 2.0));
     }
 
     if keys.just_pressed(KeyCode::U) {
-        marker_transform.rotate_x(-PI / 2.0);
+        marker_orientation.0 = marker_orientation.0.mul_quat(Quat::from_rotation_x(-PI / 2.0));
     }
 
     if keys.just_pressed(KeyCode::K) {
-        marker_transform.rotate_y(PI / 2.0);
+        marker_orientation.0 = marker_orientation.0.mul_quat(Quat::from_rotation_y(PI / 2.0));
     }
 
     if keys.just_pressed(KeyCode::I) {
-        marker_transform.rotate_y(-PI / 2.0);
+        marker_orientation.0 = marker_orientation.0.mul_quat(Quat::from_rotation_y(-PI / 2.0));
     }
 
     if keys.just_pressed(KeyCode::L) {
-        marker_transform.rotate_z(PI / 2.0);
+        marker_orientation.0 = marker_orientation.0.mul_quat(Quat::from_rotation_z(PI / 2.0));
     }
 
     if keys.just_pressed(KeyCode::O) {
-        marker_transform.rotate_z(-PI / 2.0);
+        marker_orientation.0 = marker_orientation.0.mul_quat(Quat::from_rotation_z(-PI / 2.0));
     }
 }
 
@@ -114,8 +134,9 @@ pub fn build_request_events(
     mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
     mut shapes: ResMut<Shapes>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
-    placement_query: Query<&Parent>,
-    marker_query: Query<(&Transform, &Collider), With<BuildMarker>>,
+    ship_query: Query<&Parent>,
+    ship_transform_query: Query<&GlobalTransform>,
+    marker_query: Query<(&GlobalTransform, &Collider), With<BuildMarker>>,
     network_id_query: Query<&NetworkId>,
     rapier_context: Res<RapierContext>
 ) {
@@ -125,6 +146,11 @@ pub fn build_request_events(
             None => { return; }
         },
         None => { return; }
+    };
+
+    let body = match ship_query.get(entity) {
+        Ok(parent) => parent.get(),
+        Err(_) => { return; }
     };
 
     if mouse_buttons.just_pressed(MouseButton::Left) {
@@ -158,21 +184,23 @@ pub fn build_request_events(
             }
         // Block placement
         } else {
-            if let Ok(body) = placement_query.get(entity) {
+            if let Ok(ship_transform) = ship_transform_query.get(body) {
                 if let Some((marker_transform, marker_collider)) = marker_query.iter().next() {
+                    let (_, marker_rotation, marker_translation) = marker_transform.to_scale_rotation_translation();
                     if rapier_context.intersection_with_shape(
-                        marker_transform.translation,
-                        marker_transform.rotation,
+                        marker_translation,
+                        marker_rotation,
                         marker_collider,
                         QueryFilter::new().exclude_sensors()
                     ).is_none() {
                         let shape_id = ShapeId::from(1);
-                        let shape_transform = ShapeTransform::from(*marker_transform);
+
+                        let ship_space_transform = marker_transform.reparented_to(&ship_transform);
     
                         place_shape_request_writer.send(PlaceShapeRequest {
                             shape_id,
-                            shape_transform,
-                            body_network_id: *network_id_query.get(body.get()).unwrap()
+                            shape_transform: CompactTransform::from(ship_space_transform),
+                            body_network_id: *network_id_query.get(body).unwrap()
                         });
                     }
                 }

@@ -3,23 +3,23 @@ use bevy::prelude::{Transform, Vec3, Quat};
 use crate::packets::{Packet, PacketError, PacketSerialize, PacketDeserialize};
 
 #[derive(Clone, Copy, Debug)]
-pub struct ShapeTransform {
+pub struct CompactTransform {
     pub translation: Vec3,
     pub rotation: Quat
 }
 
-impl ShapeTransform {
+impl CompactTransform {
     pub fn new(translation: Vec3, rotation: Quat) -> Self {
-        ShapeTransform { translation, rotation }
+        CompactTransform { translation, rotation }
     }
 
     pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
-        ShapeTransform { translation: Vec3::new(x, y, z), rotation: Quat::IDENTITY }
+        CompactTransform { translation: Vec3::new(x, y, z), rotation: Quat::IDENTITY }
     }
 }
 
-impl From<ShapeTransform> for Transform {
-    fn from(value: ShapeTransform) -> Self {
+impl From<CompactTransform> for Transform {
+    fn from(value: CompactTransform) -> Self {
         Self {
             translation: value.translation,
             rotation: value.rotation,
@@ -28,14 +28,14 @@ impl From<ShapeTransform> for Transform {
     }
 }
 
-impl PacketSerialize for ShapeTransform {
+impl PacketSerialize for CompactTransform {
     fn serialize(&self, packet: &mut Packet) {
         self.translation.serialize(packet);
         self.rotation.serialize(packet);
     }
 }
 
-impl PacketDeserialize for ShapeTransform {
+impl PacketDeserialize for CompactTransform {
     fn deserialize(packet: &mut Packet) -> Result<Self, PacketError> {
         let translation = Vec3::deserialize(packet)?;
         let rotation = Quat::deserialize(packet)?;
@@ -44,7 +44,7 @@ impl PacketDeserialize for ShapeTransform {
     }
 }
 
-impl From<Transform> for ShapeTransform {
+impl From<Transform> for CompactTransform {
     fn from(value: Transform) -> Self {
         Self {
             translation: value.translation,

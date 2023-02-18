@@ -49,7 +49,7 @@ pub fn initial_state_setup(
 
         let body = commands.spawn(RigidBody::Dynamic)
             .insert(VisibilityBundle::default())
-            .insert(TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)))
+            .insert(TransformBundle::from_transform(Transform::from(initial_state.body_transform)))
             .insert(Velocity::default())
             .insert(GravityScale(0.0))
             .insert(initial_state.body_network_id)

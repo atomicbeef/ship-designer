@@ -30,7 +30,7 @@ mod player_connection_event_systems;
 mod raycast_selection;
 mod settings;
 
-use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker};
+use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation};
 use camera::{FreeCameraPlugin, FreeCamera};
 use connection_state::ConnectionState;
 use meshes::{MeshHandles, free_mesh_handles};
@@ -153,6 +153,7 @@ fn setup(
     let marker_half_extents = marker_shape.center() - Vec3::splat(0.01);
 
     commands.spawn(BuildMarker)
+        .insert(BuildMarkerOrientation(Quat::IDENTITY))
         .insert(PbrBundle {
             mesh: get_mesh_or_generate(marker_shape_handle.id(), marker_shape, &mut mesh_handles, &mut meshes),
             material: materials.add(Color::rgba(0.25, 0.62, 0.26, 0.5).into()),

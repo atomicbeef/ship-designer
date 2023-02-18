@@ -50,7 +50,9 @@ pub fn confirm_place_shape_requests(
 
     for place_shape_request in place_shape_requests {
         let body = world.get_resource::<NetworkIdIndex>().unwrap().entity(&place_shape_request.body_network_id).unwrap();
+        let body_transform = world.get::<GlobalTransform>(body).unwrap();
         let shape_transform = Transform::from(place_shape_request.shape_transform);
+        let (_, shape_global_rotation, shape_global_translation) = body_transform.mul_transform(shape_transform).to_scale_rotation_translation();
 
         let shape_handle;
         let shape_center;
@@ -66,8 +68,8 @@ pub fn confirm_place_shape_requests(
         let rapier_context = world.get_resource::<RapierContext>().unwrap();
 
         if rapier_context.cast_shape(
-            shape_transform.translation,
-            shape_transform.rotation,
+            shape_global_translation,
+            shape_global_rotation,
             Vec3::splat(0.0001),
             &Collider::cuboid(
                 shape_half_extents.x,

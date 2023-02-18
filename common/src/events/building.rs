@@ -1,11 +1,12 @@
 use crate::network_id::NetworkId;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
 use crate::shape::ShapeId;
-use crate::shape_transform::ShapeTransform;
+use crate::compact_transform::CompactTransform;
 
+#[derive(Debug)]
 pub struct PlaceShapeRequest {
     pub shape_id: ShapeId,
-    pub shape_transform: ShapeTransform,
+    pub shape_transform: CompactTransform,
     pub body_network_id: NetworkId
 }
 
@@ -14,7 +15,7 @@ impl TryFrom<Packet> for PlaceShapeRequest {
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let shape_id = ShapeId::deserialize(&mut packet)?;
-        let shape_transform = ShapeTransform::deserialize(&mut packet)?;
+        let shape_transform = CompactTransform::deserialize(&mut packet)?;
         let body_network_id = NetworkId::deserialize(&mut packet)?;
         Ok(Self { shape_id, shape_transform, body_network_id })
     }
@@ -32,7 +33,7 @@ impl From<&PlaceShapeRequest> for Packet {
 
 pub struct PlaceShapeCommand {
     pub shape_id: ShapeId,
-    pub transform: ShapeTransform,
+    pub transform: CompactTransform,
     pub shape_network_id: NetworkId,
     pub body_network_id: NetworkId
 }
@@ -42,7 +43,7 @@ impl TryFrom<Packet> for PlaceShapeCommand {
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let shape_id = ShapeId::deserialize(&mut packet)?;
-        let transform = ShapeTransform::deserialize(&mut packet)?;
+        let transform = CompactTransform::deserialize(&mut packet)?;
         let shape_network_id = NetworkId::deserialize(&mut packet)?;
         let body_network_id = NetworkId::deserialize(&mut packet)?;
         Ok(Self { shape_id, transform, shape_network_id, body_network_id })
