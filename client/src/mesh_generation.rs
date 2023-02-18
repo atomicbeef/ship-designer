@@ -7,11 +7,80 @@ use common::materials::Material;
 
 use crate::meshes::MeshHandles;
 
+fn add_box_mesh_data(
+    min_x: f32,
+    max_x: f32,
+    min_y: f32,
+    max_y: f32,
+    min_z: f32,
+    max_z: f32,
+    vertices: &mut Vec<[f32; 3]>,
+    triangles: &mut Vec<u32>,
+    normals: &mut Vec<[f32; 3]>,
+    uvs: &mut Vec<[f32; 2]>,
+    index_offset: &mut u32
+) {
+    let verts = &[
+        // Front
+        ([min_x, min_y, max_z], [0., 0., 1.0], [0., 0.]),
+        ([max_x, min_y, max_z], [0., 0., 1.0], [1.0, 0.]),
+        ([max_x, max_y, max_z], [0., 0., 1.0], [1.0, 1.0]),
+        ([min_x, max_y, max_z], [0., 0., 1.0], [0., 1.0]),
+        // Back
+        ([min_x, max_y, min_z], [0., 0., -1.0], [1.0, 0.]),
+        ([max_x, max_y, min_z], [0., 0., -1.0], [0., 0.]),
+        ([max_x, min_y, min_z], [0., 0., -1.0], [0., 1.0]),
+        ([min_x, min_y, min_z], [0., 0., -1.0], [1.0, 1.0]),
+        // Right
+        ([max_x, min_y, min_z], [1.0, 0., 0.], [0., 0.]),
+        ([max_x, max_y, min_z], [1.0, 0., 0.], [1.0, 0.]),
+        ([max_x, max_y, max_z], [1.0, 0., 0.], [1.0, 1.0]),
+        ([max_x, min_y, max_z], [1.0, 0., 0.], [0., 1.0]),
+        // Left
+        ([min_x, min_y, max_z], [-1.0, 0., 0.], [1.0, 0.]),
+        ([min_x, max_y, max_z], [-1.0, 0., 0.], [0., 0.]),
+        ([min_x, max_y, min_z], [-1.0, 0., 0.], [0., 1.0]),
+        ([min_x, min_y, min_z], [-1.0, 0., 0.], [1.0, 1.0]),
+        // Top
+        ([max_x, max_y, min_z], [0., 1.0, 0.], [1.0, 0.]),
+        ([min_x, max_y, min_z], [0., 1.0, 0.], [0., 0.]),
+        ([min_x, max_y, max_z], [0., 1.0, 0.], [0., 1.0]),
+        ([max_x, max_y, max_z], [0., 1.0, 0.], [1.0, 1.0]),
+        // Bottom
+        ([max_x, min_y, max_z], [0., -1.0, 0.], [0., 0.]),
+        ([min_x, min_y, max_z], [0., -1.0, 0.], [1.0, 0.]),
+        ([min_x, min_y, min_z], [0., -1.0, 0.], [1.0, 1.0]),
+        ([max_x, min_y, min_z], [0., -1.0, 0.], [0., 1.0]),
+    ];
+
+    vertices.extend(verts.iter().map(|(p, _, _)| *p));
+    normals.extend(verts.iter().map(|(_, n, _)| *n));
+    uvs.extend(verts.iter().map(|(_, _, uv)| *uv));
+
+    triangles.extend([
+        // Front
+        *index_offset, *index_offset + 1, *index_offset + 2, *index_offset + 2, *index_offset + 3, *index_offset,
+        // Back
+        *index_offset + 4, *index_offset + 5, *index_offset + 6, *index_offset + 6, *index_offset + 7, *index_offset + 4,
+        // Right
+        *index_offset + 8, *index_offset + 9, *index_offset + 10, *index_offset + 10, *index_offset + 11, *index_offset + 8,
+        // Left
+        *index_offset + 12, *index_offset + 13, *index_offset + 14, *index_offset + 14, *index_offset + 15, *index_offset + 12,
+        // Top
+        *index_offset + 16, *index_offset + 17, *index_offset + 18, *index_offset + 18, *index_offset + 19, *index_offset + 16,
+        // Bottom
+        *index_offset + 20, *index_offset + 21, *index_offset + 22, *index_offset + 22, *index_offset + 23, *index_offset + 20
+    ]);
+
+    *index_offset += 24;
+}
+
 pub fn generate_shape_mesh(
     shape: &Shape
 ) -> Mesh {
     let mut vertices: Vec<[f32; 3]> = Vec::new();
     let mut triangles: Vec<u32> = Vec::new();
+    let mut index_offset: u32 = 0;
     let mut normals: Vec<[f32; 3]> = Vec::new();
     let mut uvs: Vec<[f32; 2]> = Vec::new();
 
@@ -25,115 +94,20 @@ pub fn generate_shape_mesh(
                 let x = s_x as f32 * VOXEL_SIZE;
                 let y = s_y as f32 * VOXEL_SIZE;
                 let z = s_z as f32 * VOXEL_SIZE;
-                let vertex_index_offset = vertices.len() as u32;
 
-                // Front vertices
-                vertices.push([x, y, -z]);
-                vertices.push([x, y + VOXEL_SIZE, -z]);
-                vertices.push([x + VOXEL_SIZE, y + VOXEL_SIZE, -z]);
-                vertices.push([x + VOXEL_SIZE, y, -z]);
-                normals.push([0.0, 0.0, 1.0]);
-                normals.push([0.0, 0.0, 1.0]);
-                normals.push([0.0, 0.0, 1.0]);
-                normals.push([0.0, 0.0, 1.0]);
-                uvs.push([0.0, 1.0]);
-                uvs.push([0.0, 0.0]);
-                uvs.push([1.0, 0.0]);
-                uvs.push([1.0, 1.0]);
-
-                // Front triangles
-                triangles.extend([vertex_index_offset + 2, vertex_index_offset + 1, vertex_index_offset]);
-                triangles.extend([vertex_index_offset, vertex_index_offset + 3, vertex_index_offset + 2]);
-
-                // Left vertices
-                vertices.push([x, y, -z]);
-                vertices.push([x, y, -z - VOXEL_SIZE]);
-                vertices.push([x, y + VOXEL_SIZE, -z - VOXEL_SIZE]);
-                vertices.push([x, y + VOXEL_SIZE, -z]);
-                normals.push([-1.0, 0.0, 0.0]);
-                normals.push([-1.0, 0.0, 0.0]);
-                normals.push([-1.0, 0.0, 0.0]);
-                normals.push([-1.0, 0.0, 0.0]);
-                uvs.push([0.0, 1.0]);
-                uvs.push([0.0, 0.0]);
-                uvs.push([1.0, 0.0]);
-                uvs.push([1.0, 1.0]);
-
-                // Left triangles
-                triangles.extend([vertex_index_offset + 5, vertex_index_offset + 4, vertex_index_offset + 7]);
-                triangles.extend([vertex_index_offset + 7, vertex_index_offset + 6, vertex_index_offset + 5]);
-
-                // Top vertices
-                vertices.push([x, y + VOXEL_SIZE, -z]);
-                vertices.push([x, y + VOXEL_SIZE, -z - VOXEL_SIZE]);
-                vertices.push([x + VOXEL_SIZE, y + VOXEL_SIZE, -z - VOXEL_SIZE]);
-                vertices.push([x + VOXEL_SIZE, y + VOXEL_SIZE, -z]);
-                normals.push([0.0, 1.0, 0.0]);
-                normals.push([0.0, 1.0, 0.0]);
-                normals.push([0.0, 1.0, 0.0]);
-                normals.push([0.0, 1.0, 0.0]);
-                uvs.push([0.0, 1.0]);
-                uvs.push([0.0, 0.0]);
-                uvs.push([1.0, 0.0]);
-                uvs.push([1.0, 1.0]);
-
-                // Top faces
-                triangles.extend([vertex_index_offset + 9, vertex_index_offset + 8, vertex_index_offset + 11]);
-                triangles.extend([vertex_index_offset + 11, vertex_index_offset + 10, vertex_index_offset + 9]);
-
-                // Back vertices
-                vertices.push([x, y + VOXEL_SIZE, -z - VOXEL_SIZE]);
-                vertices.push([x, y, -z - VOXEL_SIZE]);
-                vertices.push([x + VOXEL_SIZE, y + VOXEL_SIZE, -z - VOXEL_SIZE]);
-                vertices.push([x + VOXEL_SIZE, y, -z - VOXEL_SIZE]);
-                normals.push([0.0, 0.0, -1.0]);
-                normals.push([0.0, 0.0, -1.0]);
-                normals.push([0.0, 0.0, -1.0]);
-                normals.push([0.0, 0.0, -1.0]);
-                uvs.push([0.0, 0.0]);
-                uvs.push([0.0, 1.0]);
-                uvs.push([1.0, 0.0]);
-                uvs.push([1.0, 1.0]);
-
-                // Back faces
-                triangles.extend([vertex_index_offset + 15, vertex_index_offset + 13, vertex_index_offset + 12]);
-                triangles.extend([vertex_index_offset + 12, vertex_index_offset + 14, vertex_index_offset + 15]);
-
-                // Right vertices
-                vertices.push([x + VOXEL_SIZE, y, -z]);
-                vertices.push([x + VOXEL_SIZE, y + VOXEL_SIZE, -z]);
-                vertices.push([x + VOXEL_SIZE, y + VOXEL_SIZE, -z - VOXEL_SIZE]);
-                vertices.push([x + VOXEL_SIZE, y, -z - VOXEL_SIZE]);
-                normals.push([1.0, 0.0, 0.0]);
-                normals.push([1.0, 0.0, 0.0]);
-                normals.push([1.0, 0.0, 0.0]);
-                normals.push([1.0, 0.0, 0.0]);
-                uvs.push([0.0, 1.0]);
-                uvs.push([0.0, 0.0]);
-                uvs.push([1.0, 0.0]);
-                uvs.push([1.0, 1.0]);
-
-                // Right faces
-                triangles.extend([vertex_index_offset + 17, vertex_index_offset + 16, vertex_index_offset + 19]);
-                triangles.extend([vertex_index_offset + 19, vertex_index_offset + 18, vertex_index_offset + 17]);
-
-                // Bottom vertices
-                vertices.push([x, y, -z]);
-                vertices.push([x, y, -z - VOXEL_SIZE]);
-                vertices.push([x + VOXEL_SIZE, y, -z - VOXEL_SIZE]);
-                vertices.push([x + VOXEL_SIZE, y, -z]);
-                normals.push([0.0, -1.0, 0.0]);
-                normals.push([0.0, -1.0, 0.0]);
-                normals.push([0.0, -1.0, 0.0]);
-                normals.push([0.0, -1.0, 0.0]);
-                uvs.push([0.0, 1.0]);
-                uvs.push([0.0, 0.0]);
-                uvs.push([1.0, 0.0]);
-                uvs.push([1.0, 1.0]);
-
-                // Bottom faces
-                triangles.extend([vertex_index_offset + 20, vertex_index_offset + 21, vertex_index_offset + 22]);
-                triangles.extend([vertex_index_offset + 22, vertex_index_offset + 23, vertex_index_offset + 20]);
+                add_box_mesh_data(
+                    x,
+                    x + VOXEL_SIZE,
+                    y,
+                    y + VOXEL_SIZE,
+                    z,
+                    z + VOXEL_SIZE,
+                    &mut vertices,
+                    &mut triangles,
+                    &mut normals,
+                    &mut uvs,
+                    &mut index_offset
+                );
             }
         }
     }
@@ -142,7 +116,7 @@ pub fn generate_shape_mesh(
     for vertex in vertices.iter_mut() {
         vertex[0] -= shape.width() as f32 * VOXEL_SIZE / 2.0;
         vertex[1] -= shape.height() as f32 * VOXEL_SIZE / 2.0;
-        vertex[2] += shape.depth() as f32 * VOXEL_SIZE / 2.0;
+        vertex[2] -= shape.depth() as f32 * VOXEL_SIZE / 2.0;
     }
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
