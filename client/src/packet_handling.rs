@@ -1,5 +1,6 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
+use common::events::shape::UpdateVoxels;
 use uflow::client::{Event::*, ErrorType};
 
 use common::events::building::{PlaceShapeCommand, DeleteShapeCommand};
@@ -15,7 +16,8 @@ pub fn process_packets(
     mut player_connected_writer: EventWriter<PlayerConnected>,
     mut player_disconnected_writer: EventWriter<PlayerDisconnected>,
     mut app_exit_writer: EventWriter<AppExit>,
-    mut initial_state_writer: EventWriter<InitialState>
+    mut initial_state_writer: EventWriter<InitialState>,
+    mut update_voxels_writer: EventWriter<UpdateVoxels>
 ) {
     for event in state.client.step() {
         match event {
@@ -35,7 +37,8 @@ pub fn process_packets(
                             &mut delete_block_command_writer,
                             &mut player_connected_writer,
                             &mut player_disconnected_writer,
-                            &mut initial_state_writer
+                            &mut initial_state_writer,
+                            &mut update_voxels_writer
                         );
                     },
                     Err(err) => {
@@ -73,7 +76,8 @@ fn generate_events(
     delete_block_command_writer: &mut EventWriter<DeleteShapeCommand>,
     player_connected_writer: &mut EventWriter<PlayerConnected>,
     player_disconnected_writer: &mut EventWriter<PlayerDisconnected>,
-    initial_state_writer: &mut EventWriter<InitialState>
+    initial_state_writer: &mut EventWriter<InitialState>,
+    update_voxels_writer: &mut EventWriter<UpdateVoxels>
 ) {
     match packet.packet_type() {
         PacketType::PlaceShape => {
@@ -120,6 +124,16 @@ fn generate_events(
             match InitialState::try_from(packet) {
                 Ok(initial_state) => {
                     initial_state_writer.send(initial_state);
+                },
+                Err(err) => {
+                    warn!(?err);
+                }
+            }
+        },
+        PacketType::UpdateVoxels => {
+            match UpdateVoxels::try_from(packet) {
+                Ok(update_voxels) => {
+                    update_voxels_writer.send(update_voxels);
                 },
                 Err(err) => {
                     warn!(?err);

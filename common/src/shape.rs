@@ -90,6 +90,11 @@ impl Shape {
         &self.voxels
     }
 
+    pub fn set_voxels(&mut self, new_voxels: &[Material]) {
+        self.voxels.clear();
+        self.voxels.extend_from_slice(new_voxels);
+    }
+
     pub fn parent_shape_id(&self) -> Option<ShapeId> {
         self.parent_shape_id
     }

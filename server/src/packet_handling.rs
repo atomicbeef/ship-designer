@@ -15,7 +15,7 @@ pub fn process_packets(
     mut place_block_request_writer: EventWriter<PlaceShapeRequest>,
     mut delete_block_request_writer: EventWriter<DeleteShapeRequest>,
     mut client_connected_writer: EventWriter<PlayerConnected>,
-    mut client_disconnected_writer: EventWriter<PlayerDisconnected>
+    mut client_disconnected_writer: EventWriter<PlayerDisconnected>,
 ) {
     state.server.flush();
 
@@ -47,7 +47,11 @@ pub fn process_packets(
                 match Packet::try_from(data) {
                     Ok(packet) => {
                         debug!("Received packet {:?}", packet);
-                        generate_events(packet, &mut place_block_request_writer, &mut delete_block_request_writer);
+                        generate_events(
+                            packet,
+                            &mut place_block_request_writer,
+                            &mut delete_block_request_writer,
+                        );
                     },
                     Err(err) => {
                         warn!(?err);
@@ -85,7 +89,7 @@ pub fn process_packets(
 fn generate_events(
     packet: Packet,
     place_block_writer: &mut EventWriter<PlaceShapeRequest>,
-    delete_block_writer: &mut EventWriter<DeleteShapeRequest>
+    delete_block_writer: &mut EventWriter<DeleteShapeRequest>,
 ) {
     match packet.packet_type() {
         PacketType::PlaceShape => {
@@ -110,6 +114,7 @@ fn generate_events(
         },
         PacketType::InitialState => {},
         PacketType::PlayerConnected => {},
-        PacketType::PlayerDisconnected => {}
+        PacketType::PlayerDisconnected => {},
+        PacketType::UpdateVoxels => {},
     }
 }

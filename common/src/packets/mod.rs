@@ -20,7 +20,8 @@ pub enum PacketType {
     DeleteShape,
     InitialState,
     PlayerConnected,
-    PlayerDisconnected
+    PlayerDisconnected,
+    UpdateVoxels
 }
 
 #[derive(Debug, Clone)]
