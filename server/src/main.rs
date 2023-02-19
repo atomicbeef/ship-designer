@@ -111,8 +111,9 @@ fn setup(
         .insert(VisibilityBundle::default())
         .insert(TransformBundle::from_transform(Transform {
             translation: Vec3::new(1.0, -1.0, 1.0),
-            rotation: Quat::IDENTITY,
-            //rotation: Quat::from_xyzw(0.002, 0.612, -0.204, -0.764).normalize(),
+            //translation: Vec3::splat(0.0),
+            //rotation: Quat::IDENTITY,
+            rotation: Quat::from_xyzw(0.002, 0.612, -0.204, -0.764).normalize(),
             scale: Vec3::splat(1.0)
         }))
         .insert(Velocity::default())

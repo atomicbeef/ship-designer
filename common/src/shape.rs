@@ -57,6 +57,10 @@ impl Shape {
     }
 
     fn pos_to_index(&self, x: usize, y: usize, z: usize) -> usize {
+        assert!(x < self.width as usize);
+        assert!(y < self.height as usize);
+        assert!(z < self.depth as usize);
+
         self.width as usize * self.height as usize * z + y * self.width as usize + x
     }
 
