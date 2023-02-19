@@ -12,7 +12,7 @@ bevy-inspector-egui = "0.17"
 uflow = "0.7"
 iyes_loopless = "0.9"
 num_enum = "0.5"
-bevy_rapier3d = { version = "0.19", features = [ "debug-render", "simd-stable" ] }
+bevy_rapier3d = { version = "0.20", features = [ "debug-render-3d", "simd-stable" ] }
 
 [dependencies.bevy]
 version = "0.9"

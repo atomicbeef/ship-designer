@@ -10,7 +10,7 @@ common = { package = "ship-designer-common", path = "../common" }
 uflow = "0.7"
 iyes_loopless = "0.9"
 num_enum = "0.5"
-bevy_rapier3d = { version = "0.19", features = [ "simd-stable" ] }
+bevy_rapier3d = { version = "0.20", features = [ "simd-stable" ] }
 
 [dependencies.bevy]
 version = "0.9"
