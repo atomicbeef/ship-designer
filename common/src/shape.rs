@@ -9,7 +9,7 @@ use crossbeam_channel::{Sender, Receiver};
 use crate::materials::Material;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
-// Voxels are 10 cm^3
+// Voxels are 10^3 cm^3
 pub const VOXEL_SIZE: f32 = 0.1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect)]
@@ -140,13 +140,13 @@ impl PacketDeserialize for Shape {
     }
 }
 
-struct HandleDroped(ShapeId);
+struct HandleDropped(ShapeId);
 
 #[derive(Component, Reflect)]
 pub struct ShapeHandle {
     id: ShapeId,
     #[reflect(ignore)]
-    channel: Sender<HandleDroped>
+    channel: Sender<HandleDropped>
 }
 
 impl ShapeHandle {
@@ -157,7 +157,7 @@ impl ShapeHandle {
 
 impl Drop for ShapeHandle {
     fn drop(&mut self) {
-        self.channel.send(HandleDroped(self.id)).unwrap();
+        self.channel.send(HandleDropped(self.id)).unwrap();
     }
 }
 
@@ -202,7 +202,7 @@ pub struct Shapes {
     shapes: HashMap<ShapeId, Shape>,
     current_shape_id: u32,
     ref_counts: Mutex<HashMap<ShapeId, usize>>,
-    handle_dropped_channels: (Sender<HandleDroped>, Receiver<HandleDroped>),
+    handle_dropped_channels: (Sender<HandleDropped>, Receiver<HandleDropped>),
 }
 
 impl Shapes {
