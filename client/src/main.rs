@@ -6,8 +6,10 @@ use bevy::window::WindowClosed;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use building_material::BuildingMaterial;
+use common::colliders::remove_unused_colliders;
 use common::events::shape::UpdateVoxels;
-use common::network_id::{update_index, NetworkIdIndex};
+use common::index::{update_index, Index};
+use common::network_id::NetworkId;
 use common::player::Players;
 use iyes_loopless::prelude::*;
 use mesh_generation::{RegenerateShapeMesh, regenerate_shape_mesh, get_mesh_or_generate};
@@ -85,7 +87,7 @@ fn main() {
         .insert_resource(Players::new())
         .insert_resource(Shapes::new())
         .insert_resource(MeshHandles::new())
-        .insert_resource(NetworkIdIndex::new())
+        .insert_resource(Index::<NetworkId>::new())
         .add_stage_before(
             CoreStage::Update,
             NetworkStage,
@@ -117,7 +119,8 @@ fn main() {
         .add_system(player_connected)
         .add_system(player_disconnected)
         .add_system(initial_state_setup.run_on_event::<InitialState>())
-        .add_system_to_stage(CoreStage::PostUpdate, update_index)
+        .add_system(remove_unused_colliders)
+        .add_system_to_stage(CoreStage::PostUpdate, update_index::<NetworkId>)
         .register_type::<common::shape::ShapeId>()
         .register_type::<common::shape::ShapeHandle>()
         .run();

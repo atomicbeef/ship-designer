@@ -11,8 +11,8 @@ use crate::connection_state::ConnectionState;
 
 pub fn process_packets(
     mut state: ResMut<ConnectionState>,
-    mut place_block_command_writer: EventWriter<PlaceShapeCommand>,
-    mut delete_block_command_writer: EventWriter<DeleteShapeCommand>,
+    mut place_shape_command_writer: EventWriter<PlaceShapeCommand>,
+    mut delete_shape_command_writer: EventWriter<DeleteShapeCommand>,
     mut player_connected_writer: EventWriter<PlayerConnected>,
     mut player_disconnected_writer: EventWriter<PlayerDisconnected>,
     mut app_exit_writer: EventWriter<AppExit>,
@@ -33,8 +33,8 @@ pub fn process_packets(
                     Ok(packet) => {
                         generate_events(
                             packet,
-                            &mut place_block_command_writer,
-                            &mut delete_block_command_writer,
+                            &mut place_shape_command_writer,
+                            &mut delete_shape_command_writer,
                             &mut player_connected_writer,
                             &mut player_disconnected_writer,
                             &mut initial_state_writer,

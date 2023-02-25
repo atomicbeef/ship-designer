@@ -1,5 +1,7 @@
+pub mod colliders;
 pub mod channels;
 pub mod events;
+pub mod index;
 pub mod materials;
 pub mod network_id;
 pub mod packets;

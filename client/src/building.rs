@@ -2,11 +2,13 @@ use core::f32::consts::PI;
 
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
+use common::colliders::{generate_collider_data, ShapeCollider};
 use common::reparent_global_transform::ReparentGlobalTransform;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
 
-use common::network_id::{NetworkId, NetworkIdIndex};
+use common::index::Index;
+use common::network_id::NetworkId;
 use common::compact_transform::CompactTransform;
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
@@ -134,7 +136,8 @@ pub fn build_request_events(
     mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
     mut shapes: ResMut<Shapes>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
-    ship_query: Query<&Parent>,
+    parent_query: Query<&Parent>,
+    shape_collider_query: Query<&ShapeCollider>,
     ship_transform_query: Query<&GlobalTransform>,
     marker_query: Query<(&GlobalTransform, &Collider), With<BuildMarker>>,
     network_id_query: Query<&NetworkId>,
@@ -148,7 +151,12 @@ pub fn build_request_events(
         None => { return; }
     };
 
-    let body = match ship_query.get(entity) {
+    let shape_entity = match shape_collider_query.get(entity) {
+        Ok(collider) => collider.shape,
+        Err(_) => { return; }
+    };
+
+    let body = match parent_query.get(shape_entity) {
         Ok(parent) => parent.get(),
         Err(_) => { return; }
     };
@@ -156,11 +164,11 @@ pub fn build_request_events(
     if mouse_buttons.just_pressed(MouseButton::Left) {
         // Block deletion
         if keys.pressed(KeyCode::LAlt) {
-            let network_id = network_id_query.get(entity).unwrap();
+            let network_id = network_id_query.get(shape_entity).unwrap();
             delete_shape_request_writer.send(DeleteShapeRequest(*network_id));
         // Voxel deletion
         } else if keys.pressed(KeyCode::LControl) {
-            if let Ok((shape_transform, mut shape_handle)) = voxel_intersection_query.get_mut(entity) {
+            if let Ok((shape_transform, mut shape_handle)) = voxel_intersection_query.get_mut(shape_entity) {
                 let inverse = shape_transform.affine().inverse();
                 
                 if !inverse.is_finite() {
@@ -177,7 +185,7 @@ pub fn build_request_events(
 
                 shape.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
 
-                regenerate_shape_mesh_writer.send(RegenerateShapeMesh(entity));
+                regenerate_shape_mesh_writer.send(RegenerateShapeMesh(shape_entity));
             }
         // Block placement
         } else {
@@ -241,7 +249,6 @@ pub fn spawn_shape(
 
     let mesh_handle = get_mesh_or_generate(shape_handle.id(), shape, mesh_handles, meshes);
 
-    let shape_half_extents = shape.center();
     let shape_entity = commands.spawn(MaterialMeshBundle::<BuildingMaterial> {
             mesh: mesh_handle,
             material: materials.add(BuildingMaterial { color: Color::rgb(0.0, 0.3, 0.5).into() }),
@@ -250,15 +257,19 @@ pub fn spawn_shape(
         })
         .insert(shape_handle)
         .insert(shape_network_id)
-        .insert(Collider::cuboid(
-            shape_half_extents.x, 
-            shape_half_extents.y,
-            shape_half_extents.z
-        ))
-        .insert(Selectable)
         .id();
     
     commands.entity(body).add_child(shape_entity);
+
+    let colliders = generate_collider_data(shape, transform);
+    for collider_data in colliders {
+        let collider_entity = commands.spawn(collider_data.collider)
+            .insert(TransformBundle::from_transform(collider_data.transform))
+            .insert(ShapeCollider::new(shape_entity))
+            .insert(Selectable)
+            .id();
+        commands.entity(body).add_child(collider_entity);
+    }
 
     shape_entity
 }
@@ -270,7 +281,7 @@ pub fn place_shapes(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<BuildingMaterial>>,
     shapes: Res<Shapes>,
-    network_id_index: Res<NetworkIdIndex>
+    network_id_index: Res<Index<NetworkId>>
 ) {
     for event in place_shape_command_reader.iter() {
         let transform = Transform::from(event.transform);
@@ -294,15 +305,30 @@ pub fn delete_shapes(
     mut delete_shape_command_reader: EventReader<DeleteShapeCommand>,
     mut commands: Commands,
     shape_query: Query<(Entity, &NetworkId)>,
-    parent_query: Query<&Parent>
+    parent_query: Query<&Parent>,
+    ship_children_query: Query<&Children>,
+    shape_collider_query: Query<&ShapeCollider>,
 ) {
     for event in delete_shape_command_reader.iter() {
-        for (entity, network_id) in shape_query.iter() {
+        for (shape_entity, network_id) in shape_query.iter() {
             if *network_id == event.0 {
-                let ship = parent_query.get(entity).unwrap().get();
-                commands.entity(ship).remove_children(&[entity]);
-                commands.entity(entity).despawn();
-                debug!("Deleting shape with entity ID {:?}", entity);
+                let ship = parent_query.get(shape_entity).unwrap().get();
+
+                // Remove colliders
+                let children = ship_children_query.get(ship).unwrap();
+                for &child in children {
+                    if let Ok(shape_collider) = shape_collider_query.get(child) {
+                        if shape_collider.shape == shape_entity {
+                            commands.entity(ship).remove_children(&[child]);
+                            commands.entity(child).despawn();
+                        }
+                    }
+                }
+
+                // Remove shape
+                commands.entity(ship).remove_children(&[shape_entity]);
+                commands.entity(shape_entity).despawn();
+                debug!("Deleting shape with entity ID {:?}", shape_entity);
             }
         }
     }

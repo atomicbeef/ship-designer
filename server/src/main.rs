@@ -6,7 +6,9 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
-use common::network_id::{update_index, NetworkIdIndex};
+use common::colliders::remove_unused_colliders;
+use common::index::{update_index, Index};
+use common::network_id::NetworkId;
 use common::player::Players;
 use common::ship::Ship;
 use iyes_loopless::prelude::*;
@@ -53,7 +55,7 @@ fn main() {
         .insert_resource(NetworkIdGenerator::new())
         .insert_resource(Shapes::new())
         .insert_resource(Players::new())
-        .insert_resource(NetworkIdIndex::new())
+        .insert_resource(Index::<NetworkId>::new())
         .add_event::<FreedShapes>()
         .add_event::<PlaceShapeRequest>()
         .add_event::<PlaceShapeCommand>()
@@ -76,7 +78,8 @@ fn main() {
         .add_system(send_delete_shape_commands)
         .add_system(send_player_connected)
         .add_system(send_player_disconnected)
-        .add_system_to_stage(CoreStage::PostUpdate, update_index)
+        .add_system(remove_unused_colliders)
+        .add_system_to_stage(CoreStage::PostUpdate, update_index::<NetworkId>)
         .run();
 }
 
@@ -122,12 +125,14 @@ fn setup(
         .insert(Ship)
         .id();
     
+    let shape_handle = shapes.get_handle(ShapeId::from(0));
+
     spawn_shape(
         &mut commands,
-        shapes.get_handle(ShapeId::from(0)),
-        TransformBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.0)),
-        network_id_generator.generate(),
         &mut shapes,
+        shape_handle,
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        network_id_generator.generate(),
         body
     );
 }

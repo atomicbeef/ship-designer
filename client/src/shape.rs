@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
 use common::events::shape::UpdateVoxels;
-use common::network_id::NetworkIdIndex;
+use common::index::Index;
+use common::network_id::NetworkId;
 use common::shape::{ShapeHandle, Shapes};
 
 use crate::RegenerateShapeMesh;
@@ -9,7 +10,7 @@ use crate::RegenerateShapeMesh;
 pub fn update_voxels(
     mut update_voxels_reader: EventReader<UpdateVoxels>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
-    network_id_index: Res<NetworkIdIndex>,
+    network_id_index: Res<Index<NetworkId>>,
     mut shape_handle_query: Query<&mut ShapeHandle>,
     mut shapes: ResMut<Shapes>
 ) {

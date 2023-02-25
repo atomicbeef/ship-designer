@@ -2,12 +2,15 @@ use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::prelude::systems::init_colliders;
+use common::colliders::ShapeCollider;
 use common::player::Players;
 use uflow::SendMode;
 
+use common::colliders::generate_collider_data;
 use common::channels::Channel;
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
-use common::network_id::{NetworkId, NetworkIdIndex,};
+use common::index::Index;
+use common::network_id::NetworkId;
 use common::packets::Packet;
 use common::shape::{Shapes, ShapeHandle};
 
@@ -16,26 +19,29 @@ use crate::server_state::ServerState;
 
 pub fn spawn_shape(
     commands: &mut Commands,
-    shape_handle: ShapeHandle,
-    transform: TransformBundle,
-    shape_network_id: NetworkId,
     shapes: &Shapes,
-    body: Entity
+    shape_handle: ShapeHandle,
+    transform: Transform,
+    shape_network_id: NetworkId,
+    body: Entity,
 ) -> Entity {
     let shape = shapes.get(&shape_handle).unwrap();
-    let shape_half_extents = shape.center();
 
     let shape_entity = commands.spawn(shape_handle)
         .insert(shape_network_id)
-        .insert(transform)
-        .insert(Collider::cuboid(
-            shape_half_extents.x, 
-            shape_half_extents.y,
-            shape_half_extents.z
-        ))
+        .insert(TransformBundle::from_transform(transform))
         .id();
     
     commands.entity(body).add_child(shape_entity);
+
+    let colliders = generate_collider_data(shape, transform);
+    for collider_data in colliders {
+        let collider_entity = commands.spawn(collider_data.collider)
+            .insert(TransformBundle::from_transform(collider_data.transform))
+            .insert(ShapeCollider::new(shape_entity))
+            .id();
+        commands.entity(body).add_child(collider_entity);
+    }
 
     shape_entity
 }
@@ -49,7 +55,7 @@ pub fn confirm_place_shape_requests(
         .collect();
 
     for place_shape_request in place_shape_requests {
-        let body = world.get_resource::<NetworkIdIndex>().unwrap().entity(&place_shape_request.body_network_id).unwrap();
+        let body = world.get_resource::<Index<NetworkId>>().unwrap().entity(&place_shape_request.body_network_id).unwrap();
         let body_transform = world.get::<GlobalTransform>(body).unwrap();
         let shape_transform = Transform::from(place_shape_request.shape_transform);
         let (_, shape_global_rotation, shape_global_translation) = body_transform.mul_transform(shape_transform).to_scale_rotation_translation();
@@ -116,14 +122,28 @@ pub fn confirm_delete_shape_requests(
     mut delete_shape_request_reader: EventReader<DeleteShapeRequest>,
     mut send_delete_shape_writer: EventWriter<DeleteShapeCommand>,
     network_id_query: Query<(Entity, &NetworkId), With<ShapeHandle>>,
+    ship_children_query: Query<&Children>,
+    shape_collider_query: Query<&ShapeCollider>,
     parent_query: Query<&Parent>
 ) {
     for delete_shape_request in delete_shape_request_reader.iter() {
-        for (entity, network_id) in network_id_query.iter() {
+        for (shape_entity, network_id) in network_id_query.iter() {
             if *network_id == delete_shape_request.0 {
-                let ship = parent_query.get(entity).unwrap().get();
-                commands.entity(ship).remove_children(&[entity]);
-                commands.entity(entity).despawn();
+                let ship = parent_query.get(shape_entity).unwrap().get();
+
+                // Remove colliders
+                let children = ship_children_query.get(ship).unwrap();
+                for &child in children {
+                    if let Ok(shape_collider) = shape_collider_query.get(child) {
+                        if shape_collider.shape == shape_entity {
+                            commands.entity(ship).remove_children(&[child]);
+                            commands.entity(child).despawn();
+                        }
+                    }
+                }
+
+                commands.entity(ship).remove_children(&[shape_entity]);
+                commands.entity(shape_entity).despawn();
                 send_delete_shape_writer.send(DeleteShapeCommand(delete_shape_request.0));
                 break;
             }

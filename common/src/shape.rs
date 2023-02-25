@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use bevy::log::debug;
-use bevy::prelude::{Component, Resource, EventWriter, ResMut, Vec3};
+use bevy::prelude::*;
 use bevy::reflect::Reflect;
 use bevy::utils::{hashbrown::hash_map, HashMap};
 use crossbeam_channel::{Sender, Receiver};

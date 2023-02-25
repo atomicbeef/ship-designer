@@ -13,14 +13,15 @@ use common::player::{Player, Players};
 use crate::server_state::ServerState;
 
 pub fn send_player_connected(
-    ship_query: Query<(&NetworkId, &Transform), &Ship>,
+    ship_query: Query<(Entity, &NetworkId, &Transform), &Ship>,
     mut player_connected_reader: EventReader<PlayerConnected>,
     players: Res<Players>,
     mut server_state: NonSendMut<ServerState>,
     shapes: Res<Shapes>,
     shape_query: Query<(&ShapeHandle, &Transform, &NetworkId)>,
+    ship_children_query: Query<&Children>,
 ) {
-    for (ship_network_id, ship_transform) in ship_query.iter() {
+    for (ship, ship_network_id, ship_transform) in ship_query.iter() {
         for player_connected in player_connected_reader.iter() {
             // Send new player connected packet to existing players
             let player_connected_packet = Packet::from(player_connected);
@@ -38,21 +39,24 @@ pub fn send_player_connected(
             let players: Vec<Player> = players.players().cloned().collect();
 
             let mut shape_data: Vec<(ShapeNetworkRepr, CompactTransform, NetworkId)> = Vec::new();
-            for (shape_handle, transform, network_id) in shape_query.iter() {
-                let shape_network_repr = match shapes.get(shape_handle) {
-                    Some(shape) => match shape.parent_shape_id() {
-                        Some(_) => ShapeNetworkRepr::Child(shape.clone()),
-                        None => ShapeNetworkRepr::Predefined(shape_handle.id()),
-                    },
-                    None => {
-                        warn!("Attempted to send non-existent shape with ID {:?} to new player!", shape_handle.id());
-                        continue;
-                    }
-                };
-
-                let shape_transform = CompactTransform::from(*transform);
-
-                shape_data.push((shape_network_repr, shape_transform, *network_id));
+            let ship_children = ship_children_query.get(ship).unwrap();
+            for &child in ship_children {
+                if let Ok((shape_handle, transform, network_id)) = shape_query.get(child) {
+                    let shape_network_repr = match shapes.get(shape_handle) {
+                        Some(shape) => match shape.parent_shape_id() {
+                            Some(_) => ShapeNetworkRepr::Child(shape.clone()),
+                            None => ShapeNetworkRepr::Predefined(shape_handle.id()),
+                        },
+                        None => {
+                            warn!("Attempted to send non-existent shape with ID {:?} to new player!", shape_handle.id());
+                            continue;
+                        }
+                    };
+    
+                    let shape_transform = CompactTransform::from(*transform);
+    
+                    shape_data.push((shape_network_repr, shape_transform, *network_id));
+                }
             }
 
             let initial_state = InitialState {
@@ -63,6 +67,8 @@ pub fn send_player_connected(
             };
             let initial_state_packet = Packet::from(&initial_state);
             
+            info!("Sending initial state to {:?}", player_connected.id);
+
             server_state.send_to_player(
                 player_connected.id,
                 (&initial_state_packet).into(),
