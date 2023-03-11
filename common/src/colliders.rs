@@ -113,15 +113,20 @@ pub fn generate_collider_data(
                 let hz = (end_z + 1 - start_z) as f32 / 2.0 * VOXEL_SIZE;
 
                 let collider = Collider::cuboid(hx, hy, hz);
-                let part_corner = part_transform.translation - part.center();
-                let collider_corner = part_corner + Vec3::new(start_x as f32, start_y as f32, start_z as f32) * VOXEL_SIZE;
-                let collider_translation = collider_corner + Vec3::new(hx, hy, hz);
 
-                let transform = Transform {
-                    translation: collider_translation,
-                    rotation: part_transform.rotation,
+                let part_space_transform = Transform {
+                    translation: Vec3::new(start_x as f32, start_y as f32, start_z as f32) * VOXEL_SIZE + Vec3::new(hx, hy, hz),
+                    rotation: Quat::IDENTITY,
                     scale: Vec3::splat(1.0)
                 };
+
+                let uncentered_part_transform = Transform {
+                    translation: part_transform.translation - part_transform.rotation.mul_vec3(part.center()),
+                    rotation: part_transform.rotation,
+                    scale: part_space_transform.scale
+                };
+
+                let transform = uncentered_part_transform.mul_transform(part_space_transform);
 
                 colliders.push(ColliderData { collider, transform });
             }
