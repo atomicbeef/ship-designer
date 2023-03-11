@@ -43,7 +43,7 @@ pub struct BuildMarkerOrientation(pub Quat);
 
 pub fn move_build_marker(
     mut marker_query: Query<(&mut Transform, &BuildMarkerOrientation, &PartHandle), With<BuildMarker>>,
-    body_transform_query: Query<&GlobalTransform>,
+    construct_transform_query: Query<&GlobalTransform>,
     parent_query: Query<&Parent>,
     selection_source_query: Query<&SelectionSource>,
     parts: Res<Parts>
@@ -55,7 +55,7 @@ pub fn move_build_marker(
 
     if let Some(selection_source) = selection_source_query.iter().next() {
         if let Some((collider, intersection)) = selection_source.intersection() {
-            let body = parent_query.get(collider).unwrap().get();
+            let construct = parent_query.get(collider).unwrap().get();
 
             let part = parts.get(part_handle).unwrap();
 
@@ -74,21 +74,21 @@ pub fn move_build_marker(
             }
             odd_offset = marker_orientation.0.mul_vec3(odd_offset).abs();
 
-            let body_transform = body_transform_query.get(body).unwrap();
+            let construct_transform = construct_transform_query.get(construct).unwrap();
 
             // Transform the point to make the calculation easier
-            let body_transform_affine = body_transform.affine();
-            let body_transform_inverse = body_transform_affine.inverse();
+            let construct_transform_affine = construct_transform.affine();
+            let construct_transform_inverse = construct_transform_affine.inverse();
 
-            let inverse_intersection = snap_to_grid(body_transform_inverse.transform_point3(intersection.point), VOXEL_SIZE);
-            let inverse_normal = body_transform_inverse.transform_vector3(intersection.normal);
+            let inverse_intersection = snap_to_grid(construct_transform_inverse.transform_point3(intersection.point), VOXEL_SIZE);
+            let inverse_normal = construct_transform_inverse.transform_vector3(intersection.normal);
 
             let inverse_center = inverse_intersection + inverse_normal * rotated_center + odd_offset * (Vec3::splat(1.0) - inverse_normal.abs());
 
-            marker_transform.translation = body_transform_affine.transform_point3(inverse_center);
+            marker_transform.translation = construct_transform_affine.transform_point3(inverse_center);
             
-            let (_, body_rotation, _) = body_transform.to_scale_rotation_translation();
-            marker_transform.rotation = body_rotation.mul_quat(marker_orientation.0);
+            let (_, construct_rotation, _) = construct_transform.to_scale_rotation_translation();
+            marker_transform.rotation = construct_rotation.mul_quat(marker_orientation.0);
         }
     }
 }
@@ -139,7 +139,7 @@ pub fn build_request_events(
     mut regenerate_collider_writer: EventWriter<RegenerateColliders>,
     parent_query: Query<&Parent>,
     part_collider_query: Query<&PartCollider>,
-    ship_transform_query: Query<&GlobalTransform>,
+    construct_transform_query: Query<&GlobalTransform>,
     marker_query: Query<(&GlobalTransform, &Collider), With<BuildMarker>>,
     network_id_query: Query<&NetworkId>,
     rapier_context: Res<RapierContext>
@@ -157,7 +157,7 @@ pub fn build_request_events(
         Err(_) => { return; }
     };
 
-    let body = match parent_query.get(part_entity) {
+    let construct = match parent_query.get(part_entity) {
         Ok(parent) => parent.get(),
         Err(_) => { return; }
     };
@@ -191,7 +191,7 @@ pub fn build_request_events(
             }
         // Block placement
         } else {
-            if let Ok(ship_transform) = ship_transform_query.get(body) {
+            if let Ok(construct_transform) = construct_transform_query.get(construct) {
                 if let Some((marker_transform, marker_collider)) = marker_query.iter().next() {
                     let (_, marker_rotation, marker_translation) = marker_transform.to_scale_rotation_translation();
                     if rapier_context.intersection_with_shape(
@@ -202,12 +202,12 @@ pub fn build_request_events(
                     ).is_none() {
                         let part_id = PartId::from(1);
 
-                        let ship_space_transform = marker_transform.reparented_to(&ship_transform);
+                        let construct_space_transform = marker_transform.reparented_to(&construct_transform);
     
                         place_part_request_writer.send(PlacePartRequest {
                             part_id,
-                            part_transform: CompactTransform::from(ship_space_transform),
-                            body_network_id: *network_id_query.get(body).unwrap()
+                            part_transform: CompactTransform::from(construct_space_transform),
+                            construct_network_id: *network_id_query.get(construct).unwrap()
                         });
                     }
                 }
@@ -245,7 +245,7 @@ pub fn spawn_part(
     part_handle: PartHandle,
     transform: Transform,
     part_network_id: NetworkId,
-    body: Entity,
+    construct: Entity,
 ) -> Entity {
     let part = parts.get(&part_handle).unwrap();
 
@@ -261,7 +261,7 @@ pub fn spawn_part(
         .insert(part_network_id)
         .id();
     
-    commands.entity(body).add_child(part_entity);
+    commands.entity(construct).add_child(part_entity);
 
     let colliders = generate_collider_data(part, transform);
     for collider_data in colliders {
@@ -270,7 +270,7 @@ pub fn spawn_part(
             .insert(PartCollider::new(part_entity))
             .insert(Selectable)
             .id();
-        commands.entity(body).add_child(collider_entity);
+        commands.entity(construct).add_child(collider_entity);
     }
 
     part_entity
@@ -296,7 +296,7 @@ pub fn place_parts(
             parts.get_handle(event.part_id),
             transform,
             event.part_network_id,
-            network_id_index.entity(&event.body_network_id).unwrap()
+            network_id_index.entity(&event.construct_network_id).unwrap()
         );
         
         debug!("Spawned part with entity ID {:?}", entity);
@@ -308,27 +308,27 @@ pub fn delete_parts(
     mut commands: Commands,
     part_query: Query<(Entity, &NetworkId)>,
     parent_query: Query<&Parent>,
-    ship_children_query: Query<&Children>,
+    construct_children_query: Query<&Children>,
     part_collider_query: Query<&PartCollider>,
 ) {
     for event in delete_part_command_reader.iter() {
         for (part_entity, network_id) in part_query.iter() {
             if *network_id == event.0 {
-                let ship = parent_query.get(part_entity).unwrap().get();
+                let construct = parent_query.get(part_entity).unwrap().get();
 
                 // Remove colliders
-                let children = ship_children_query.get(ship).unwrap();
+                let children = construct_children_query.get(construct).unwrap();
                 for &child in children {
                     if let Ok(part_collider) = part_collider_query.get(child) {
                         if part_collider.part == part_entity {
-                            commands.entity(ship).remove_children(&[child]);
+                            commands.entity(construct).remove_children(&[child]);
                             commands.entity(child).despawn();
                         }
                     }
                 }
 
                 // Remove part
-                commands.entity(ship).remove_children(&[part_entity]);
+                commands.entity(construct).remove_children(&[part_entity]);
                 commands.entity(part_entity).despawn();
                 debug!("Deleting part with entity ID {:?}", part_entity);
             }
@@ -350,13 +350,13 @@ pub fn regenerate_colliders(
         let part = parts.get(&part_handle).unwrap();
 
         if let Ok(parent) = parent_query.get(request.0) {
-            let body = parent.get();
+            let construct = parent.get();
 
             // Delete old colliders
-            for &child in children_query.get(body).unwrap() {
+            for &child in children_query.get(construct).unwrap() {
                 if let Ok(part_collider) = part_colliders_query.get(child) {
                     if part_collider.part == request.0 {
-                        commands.entity(body).remove_children(&[child]);
+                        commands.entity(construct).remove_children(&[child]);
                         commands.entity(child).despawn();
                     }
                 }
@@ -370,7 +370,7 @@ pub fn regenerate_colliders(
                     .insert(PartCollider::new(request.0))
                     .insert(Selectable)
                     .id();
-                commands.entity(body).add_child(collider_entity);
+                commands.entity(construct).add_child(collider_entity);
             }
         }
     }

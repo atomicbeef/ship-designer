@@ -49,9 +49,9 @@ impl From<&PlayerDisconnected> for Packet {
 
 pub struct InitialState {
     pub players: Vec<Player>,
-    pub body_network_id: NetworkId,
+    pub construct_network_id: NetworkId,
     pub parts: Vec<(PartNetworkRepr, CompactTransform, NetworkId)>,
-    pub body_transform: CompactTransform
+    pub construct_transform: CompactTransform
 }
 
 impl TryFrom<Packet> for InitialState {
@@ -59,10 +59,10 @@ impl TryFrom<Packet> for InitialState {
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let players: Vec<Player> = Vec::deserialize(&mut packet)?;
-        let body_network_id = NetworkId::deserialize(&mut packet)?;
+        let construct_network_id = NetworkId::deserialize(&mut packet)?;
         let partss: Vec<(PartNetworkRepr, CompactTransform, NetworkId)> = Vec::deserialize(&mut packet)?;
-        let body_transform = CompactTransform::deserialize(&mut packet)?;
-        Ok(Self { players, body_network_id, parts: partss, body_transform })
+        let construct_transform = CompactTransform::deserialize(&mut packet)?;
+        Ok(Self { players, construct_network_id, parts: partss, construct_transform })
     }
 }
 
@@ -70,9 +70,9 @@ impl From<&InitialState> for Packet {
     fn from(initial_state: &InitialState) -> Self {
         let mut packet = Packet::new(PacketType::InitialState);
         (&initial_state.players).serialize(&mut packet);
-        (&initial_state.body_network_id).serialize(&mut packet);
+        (&initial_state.construct_network_id).serialize(&mut packet);
         (&initial_state.parts).serialize(&mut packet);
-        (&initial_state.body_transform).serialize(&mut packet);
+        (&initial_state.construct_transform).serialize(&mut packet);
         packet
     }
 }

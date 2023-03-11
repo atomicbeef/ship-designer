@@ -61,9 +61,9 @@ pub fn send_player_connected(
 
             let initial_state = InitialState {
                 players,
-                body_network_id: *ship_network_id,
+                construct_network_id: *ship_network_id,
                 parts: part_data,
-                body_transform: CompactTransform::from(*ship_transform)
+                construct_transform: CompactTransform::from(*ship_transform)
             };
             let initial_state_packet = Packet::from(&initial_state);
             

@@ -47,12 +47,12 @@ pub fn initial_state_setup(
             players.add_player(player.clone());
         }
 
-        let body = commands.spawn(RigidBody::Dynamic)
+        let construct = commands.spawn(RigidBody::Dynamic)
             .insert(VisibilityBundle::default())
-            .insert(TransformBundle::from_transform(Transform::from(initial_state.body_transform)))
+            .insert(TransformBundle::from_transform(Transform::from(initial_state.construct_transform)))
             .insert(Velocity::default())
             .insert(GravityScale(0.0))
-            .insert(initial_state.body_network_id)
+            .insert(initial_state.construct_network_id)
             .insert(Ship)
             .id();
 
@@ -75,7 +75,7 @@ pub fn initial_state_setup(
                 part_handle,
                 Transform::from(*transform),
                 *network_id,
-                body
+                construct
             );
         }
     }

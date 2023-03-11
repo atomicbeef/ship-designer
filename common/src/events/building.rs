@@ -7,7 +7,7 @@ use crate::compact_transform::CompactTransform;
 pub struct PlacePartRequest {
     pub part_id: PartId,
     pub part_transform: CompactTransform,
-    pub body_network_id: NetworkId
+    pub construct_network_id: NetworkId
 }
 
 impl TryFrom<Packet> for PlacePartRequest {
@@ -16,8 +16,8 @@ impl TryFrom<Packet> for PlacePartRequest {
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let part_id = PartId::deserialize(&mut packet)?;
         let part_transform = CompactTransform::deserialize(&mut packet)?;
-        let body_network_id = NetworkId::deserialize(&mut packet)?;
-        Ok(Self { part_id, part_transform, body_network_id })
+        let construct_network_id = NetworkId::deserialize(&mut packet)?;
+        Ok(Self { part_id, part_transform, construct_network_id })
     }
 }
 
@@ -26,7 +26,7 @@ impl From<&PlacePartRequest> for Packet {
         let mut packet = Packet::new(PacketType::PlacePart);
         place_part_request.part_id.serialize(&mut packet);
         place_part_request.part_transform.serialize(&mut packet);
-        place_part_request.body_network_id.serialize(&mut packet);
+        place_part_request.construct_network_id.serialize(&mut packet);
         packet
     }
 }
@@ -35,7 +35,7 @@ pub struct PlacePartCommand {
     pub part_id: PartId,
     pub transform: CompactTransform,
     pub part_network_id: NetworkId,
-    pub body_network_id: NetworkId
+    pub construct_network_id: NetworkId
 }
 
 impl TryFrom<Packet> for PlacePartCommand {
@@ -45,8 +45,8 @@ impl TryFrom<Packet> for PlacePartCommand {
         let part_id = PartId::deserialize(&mut packet)?;
         let transform = CompactTransform::deserialize(&mut packet)?;
         let part_network_id = NetworkId::deserialize(&mut packet)?;
-        let body_network_id = NetworkId::deserialize(&mut packet)?;
-        Ok(Self { part_id, transform, part_network_id, body_network_id })
+        let construct_network_id = NetworkId::deserialize(&mut packet)?;
+        Ok(Self { part_id, transform, part_network_id, construct_network_id })
     }
 }
 
@@ -56,7 +56,7 @@ impl From<&PlacePartCommand> for Packet {
         place_part_command.part_id.serialize(&mut packet);
         place_part_command.transform.serialize(&mut packet);
         place_part_command.part_network_id.serialize(&mut packet);
-        place_part_command.body_network_id.serialize(&mut packet);
+        place_part_command.construct_network_id.serialize(&mut packet);
         packet
     }
 }

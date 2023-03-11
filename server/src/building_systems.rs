@@ -23,7 +23,7 @@ pub fn spawn_part(
     part_handle: PartHandle,
     transform: Transform,
     part_network_id: NetworkId,
-    body: Entity,
+    construct: Entity,
 ) -> Entity {
     let part = parts.get(&part_handle).unwrap();
 
@@ -32,7 +32,7 @@ pub fn spawn_part(
         .insert(TransformBundle::from_transform(transform))
         .id();
     
-    commands.entity(body).add_child(part_entity);
+    commands.entity(construct).add_child(part_entity);
 
     let colliders = generate_collider_data(part, transform);
     for collider_data in colliders {
@@ -40,7 +40,7 @@ pub fn spawn_part(
             .insert(TransformBundle::from_transform(collider_data.transform))
             .insert(PartCollider::new(part_entity))
             .id();
-        commands.entity(body).add_child(collider_entity);
+        commands.entity(construct).add_child(collider_entity);
     }
 
     part_entity
@@ -51,7 +51,7 @@ pub fn spawn_part_exclusive(
     part_handle: PartHandle,
     transform: Transform,
     part_network_id: NetworkId,
-    body: Entity,
+    construct: Entity,
     colliders: Vec<ColliderData>
 ) -> Entity {
     let part_entity = world.spawn(part_handle)
@@ -59,14 +59,14 @@ pub fn spawn_part_exclusive(
         .insert(TransformBundle::from_transform(transform))
         .id();
     
-    (AddChild { parent: body, child: part_entity }).write(world);
+    (AddChild { parent: construct, child: part_entity }).write(world);
     
     for collider_data in colliders {
         let collider_entity = world.spawn(collider_data.collider)
             .insert(TransformBundle::from_transform(collider_data.transform))
             .insert(PartCollider::new(part_entity))
             .id();
-        (AddChild { parent: body, child: collider_entity }).write(world);
+        (AddChild { parent: construct, child: collider_entity }).write(world);
     }
 
     part_entity
@@ -81,10 +81,10 @@ pub fn confirm_place_part_requests(
         .collect();
 
     for place_part_request in place_part_requests {
-        let body = world.get_resource::<Index<NetworkId>>().unwrap().entity(&place_part_request.body_network_id).unwrap();
-        let body_transform = world.get::<GlobalTransform>(body).unwrap();
+        let construct = world.get_resource::<Index<NetworkId>>().unwrap().entity(&place_part_request.construct_network_id).unwrap();
+        let construct_transform = world.get::<GlobalTransform>(construct).unwrap();
         let part_transform = Transform::from(place_part_request.part_transform);
-        let (_, part_global_rotation, part_global_translation) = body_transform.mul_transform(part_transform).to_scale_rotation_translation();
+        let (_, part_global_rotation, part_global_translation) = construct_transform.mul_transform(part_transform).to_scale_rotation_translation();
 
         let (part_handle, part_center) = {
             let parts = world.get_resource::<Parts>().unwrap();
@@ -116,14 +116,14 @@ pub fn confirm_place_part_requests(
                 generate_collider_data(part, part_transform)
             };
 
-            spawn_part_exclusive(world, part_handle, part_transform, network_id, body, colliders);
+            spawn_part_exclusive(world, part_handle, part_transform, network_id, construct, colliders);
 
             let mut place_part_events = world.get_resource_mut::<Events<PlacePartCommand>>().unwrap();
             place_part_events.send(PlacePartCommand {
                 part_id: place_part_request.part_id,
                 part_network_id: network_id,
                 transform: place_part_request.part_transform,
-                body_network_id: place_part_request.body_network_id
+                construct_network_id: place_part_request.construct_network_id
             });
 
             // Update colliders in Rapier
@@ -140,27 +140,27 @@ pub fn confirm_delete_part_requests(
     mut delete_part_request_reader: EventReader<DeletePartRequest>,
     mut send_delete_part_writer: EventWriter<DeletePartCommand>,
     network_id_query: Query<(Entity, &NetworkId), With<PartHandle>>,
-    ship_children_query: Query<&Children>,
+    construct_children_query: Query<&Children>,
     part_collider_query: Query<&PartCollider>,
     parent_query: Query<&Parent>
 ) {
     for delete_part_request in delete_part_request_reader.iter() {
         for (part_entity, network_id) in network_id_query.iter() {
             if *network_id == delete_part_request.0 {
-                let ship = parent_query.get(part_entity).unwrap().get();
+                let construct = parent_query.get(part_entity).unwrap().get();
 
                 // Remove colliders
-                let children = ship_children_query.get(ship).unwrap();
+                let children = construct_children_query.get(construct).unwrap();
                 for &child in children {
                     if let Ok(part_collider) = part_collider_query.get(child) {
                         if part_collider.part == part_entity {
-                            commands.entity(ship).remove_children(&[child]);
+                            commands.entity(construct).remove_children(&[child]);
                             commands.entity(child).despawn();
                         }
                     }
                 }
 
-                commands.entity(ship).remove_children(&[part_entity]);
+                commands.entity(construct).remove_children(&[part_entity]);
                 commands.entity(part_entity).despawn();
                 send_delete_part_writer.send(DeletePartCommand(delete_part_request.0));
                 break;
@@ -221,13 +221,13 @@ pub fn regenerate_colliders(
         let part = parts.get(&part_handle).unwrap();
 
         if let Ok(parent) = parent_query.get(request.0) {
-            let body = parent.get();
+            let construct = parent.get();
 
             // Delete old colliders
-            for &child in children_query.get(body).unwrap() {
+            for &child in children_query.get(construct).unwrap() {
                 if let Ok(part_collider) = part_colliders_query.get(child) {
                     if part_collider.part == request.0 {
-                        commands.entity(body).remove_children(&[child]);
+                        commands.entity(construct).remove_children(&[child]);
                         commands.entity(child).despawn();
                     }
                 }
@@ -240,7 +240,7 @@ pub fn regenerate_colliders(
                     .insert(TransformBundle::from_transform(collider_data.transform))
                     .insert(PartCollider::new(request.0))
                     .id();
-                commands.entity(body).add_child(collider_entity);
+                commands.entity(construct).add_child(collider_entity);
             }
         }
     }

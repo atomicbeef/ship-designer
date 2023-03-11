@@ -112,7 +112,7 @@ fn setup(
 ) {
     add_hardcoded_parts(&mut parts);
 
-    let body = commands.spawn(RigidBody::Dynamic)
+    let construct = commands.spawn(RigidBody::Dynamic)
         .insert(VisibilityBundle::default())
         .insert(TransformBundle::from_transform(Transform {
             //translation: Vec3::new(1.0, -1.0, 1.0),
@@ -135,6 +135,6 @@ fn setup(
         part_handle,
         Transform::from_xyz(0.0, 0.0, 0.0),
         network_id_generator.generate(),
-        body
+        construct
     );
 }
