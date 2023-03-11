@@ -56,21 +56,31 @@ impl Shape {
         Self { width, height, depth, voxels, parent_shape_id }
     }
 
-    fn pos_to_index(&self, x: usize, y: usize, z: usize) -> usize {
-        assert!(x < self.width as usize);
-        assert!(y < self.height as usize);
-        assert!(z < self.depth as usize);
+    pub fn pos_to_index(&self, x: u8, y: u8, z: u8) -> usize {
+        debug_assert!(x < self.width);
+        debug_assert!(y < self.height);
+        debug_assert!(z < self.depth);
 
-        self.width as usize * self.height as usize * z + y * self.width as usize + x
+        let width = self.width as usize;
+        let height = self.height as usize;
+        let x = x as usize;
+        let y = y as usize;
+        let z = z as usize;
+
+        width * height * z + y * width + x
     }
 
     pub fn get(&self, x: u8, y: u8, z: u8) -> Material {
-        let i = self.pos_to_index(x.into(), y.into(), z.into());
+        let i = self.pos_to_index(x, y, z);
+        self.voxels[i]
+    }
+
+    pub fn get_index(&self, i: usize) -> Material {
         self.voxels[i]
     }
 
     pub fn set(&mut self, x: u8, y: u8, z: u8, material: Material) {
-        let i = self.pos_to_index(x.into(), y.into(), z.into());
+        let i = self.pos_to_index(x, y, z);
         self.voxels[i] = material;
     }
 
@@ -84,6 +94,10 @@ impl Shape {
 
     pub fn depth(&self) -> u8 {
         self.depth
+    }
+
+    pub fn size(&self) -> u32 {
+        self.width as u32 * self.height as u32 * self.depth as u32
     }
 
     pub fn voxels(&self) -> &[Material] {

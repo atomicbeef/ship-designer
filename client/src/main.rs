@@ -6,7 +6,7 @@ use bevy::window::WindowClosed;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use building_material::BuildingMaterial;
-use common::colliders::remove_unused_colliders;
+use common::colliders::{remove_unused_colliders, RegenerateColliders};
 use common::events::shape::UpdateVoxels;
 use common::index::{update_index, Index};
 use common::network_id::NetworkId;
@@ -35,7 +35,7 @@ mod raycast_selection;
 mod settings;
 mod shape;
 
-use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation};
+use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation, regenerate_colliders};
 use camera::{FreeCameraPlugin, FreeCamera};
 use connection_state::ConnectionState;
 use meshes::{MeshHandles, free_mesh_handles};
@@ -102,6 +102,7 @@ fn main() {
         .add_event::<PlayerDisconnected>()
         .add_event::<InitialState>()
         .add_event::<RegenerateShapeMesh>()
+        .add_event::<RegenerateColliders>()
         .add_event::<FreedShapes>()
         .add_event::<UpdateVoxels>()
         .add_system_to_stage(CoreStage::First, update_intersections)
@@ -114,6 +115,7 @@ fn main() {
         .add_system(delete_shapes)
         .add_system(update_voxels)
         .add_system(regenerate_shape_mesh)
+        .add_system(regenerate_colliders)
         .add_system(free_shapes)
         .add_system(free_mesh_handles)
         .add_system(player_connected)

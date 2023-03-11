@@ -2,7 +2,7 @@ use core::f32::consts::PI;
 
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
-use common::colliders::{generate_collider_data, ShapeCollider};
+use common::colliders::{generate_collider_data, ShapeCollider, RegenerateColliders};
 use common::reparent_global_transform::ReparentGlobalTransform;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
@@ -136,6 +136,7 @@ pub fn build_request_events(
     mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
     mut shapes: ResMut<Shapes>,
     mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
+    mut regenerate_collider_writer: EventWriter<RegenerateColliders>,
     parent_query: Query<&Parent>,
     shape_collider_query: Query<&ShapeCollider>,
     ship_transform_query: Query<&GlobalTransform>,
@@ -180,12 +181,13 @@ pub fn build_request_events(
 
                 let inverse_normal = inverse.transform_vector3(intersection_data.normal);
                 let inverse_intersection = inverse.transform_point3(intersection_data.point);
-
+                
                 let voxel_pos = (inverse_intersection + shape.center() - inverse_normal * Vec3::splat(VOXEL_SIZE / 2.0)) / VOXEL_SIZE;
 
                 shape.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
 
                 regenerate_shape_mesh_writer.send(RegenerateShapeMesh(shape_entity));
+                regenerate_collider_writer.send(RegenerateColliders(shape_entity));
             }
         // Block placement
         } else {
@@ -329,6 +331,46 @@ pub fn delete_shapes(
                 commands.entity(ship).remove_children(&[shape_entity]);
                 commands.entity(shape_entity).despawn();
                 debug!("Deleting shape with entity ID {:?}", shape_entity);
+            }
+        }
+    }
+}
+
+pub fn regenerate_colliders(
+    mut commands: Commands,
+    mut regenerate_colliders_reader: EventReader<RegenerateColliders>,
+    parent_query: Query<&Parent, With<ShapeHandle>>,
+    children_query: Query<&Children>,
+    shape_colliders_query: Query<&ShapeCollider>,
+    shape_query: Query<(&ShapeHandle, &Transform)>,
+    shapes: Res<Shapes>
+) {
+    for request in regenerate_colliders_reader.iter() {
+        let (shape_handle, transform) = shape_query.get(request.0).unwrap();
+        let shape = shapes.get(&shape_handle).unwrap();
+
+        if let Ok(parent) = parent_query.get(request.0) {
+            let body = parent.get();
+
+            // Delete old colliders
+            for &child in children_query.get(body).unwrap() {
+                if let Ok(shape_collider) = shape_colliders_query.get(child) {
+                    if shape_collider.shape == request.0 {
+                        commands.entity(body).remove_children(&[child]);
+                        commands.entity(child).despawn();
+                    }
+                }
+            }
+
+            // Spawn new colliders
+            let colliders = generate_collider_data(shape, *transform);
+            for collider_data in colliders {
+                let collider_entity = commands.spawn(collider_data.collider)
+                    .insert(TransformBundle::from_transform(collider_data.transform))
+                    .insert(ShapeCollider::new(request.0))
+                    .insert(Selectable)
+                    .id();
+                commands.entity(body).add_child(collider_entity);
             }
         }
     }

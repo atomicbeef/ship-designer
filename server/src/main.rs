@@ -6,7 +6,7 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
-use common::colliders::remove_unused_colliders;
+use common::colliders::{remove_unused_colliders, RegenerateColliders};
 use common::index::{update_index, Index};
 use common::network_id::NetworkId;
 use common::player::Players;
@@ -20,7 +20,7 @@ mod packet_handling;
 mod player_connection_event_systems;
 mod server_state;
 
-use building_systems::{send_place_shape_commands, send_delete_shape_commands, spawn_shape};
+use building_systems::{send_place_shape_commands, send_delete_shape_commands, spawn_shape, regenerate_colliders};
 use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
 use common::shape::{Shapes, ShapeId, free_shapes, FreedShapes};
@@ -56,6 +56,7 @@ fn main() {
         .insert_resource(Shapes::new())
         .insert_resource(Players::new())
         .insert_resource(Index::<NetworkId>::new())
+        .add_event::<RegenerateColliders>()
         .add_event::<FreedShapes>()
         .add_event::<PlaceShapeRequest>()
         .add_event::<PlaceShapeCommand>()
@@ -79,6 +80,7 @@ fn main() {
         .add_system(send_player_connected)
         .add_system(send_player_disconnected)
         .add_system(remove_unused_colliders)
+        .add_system(regenerate_colliders)
         .add_system_to_stage(CoreStage::PostUpdate, update_index::<NetworkId>)
         .run();
 }
@@ -113,10 +115,10 @@ fn setup(
     let body = commands.spawn(RigidBody::Dynamic)
         .insert(VisibilityBundle::default())
         .insert(TransformBundle::from_transform(Transform {
-            translation: Vec3::new(1.0, -1.0, 1.0),
-            //translation: Vec3::splat(0.0),
-            //rotation: Quat::IDENTITY,
-            rotation: Quat::from_xyzw(0.002, 0.612, -0.204, -0.764).normalize(),
+            //translation: Vec3::new(1.0, -1.0, 1.0),
+            translation: Vec3::splat(0.0),
+            rotation: Quat::IDENTITY,
+            //rotation: Quat::from_xyzw(0.002, 0.612, -0.204, -0.764).normalize(),
             scale: Vec3::splat(1.0)
         }))
         .insert(Velocity::default())
