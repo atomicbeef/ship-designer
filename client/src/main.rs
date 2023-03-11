@@ -35,7 +35,7 @@ mod raycast_selection;
 mod settings;
 mod part;
 
-use building::{build_request_events, place_parts, delete_parts, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation, regenerate_colliders};
+use building::{build_request_events, place_parts, delete_parts, send_place_part_requests, send_delete_part_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation, regenerate_colliders};
 use camera::{FreeCameraPlugin, FreeCamera};
 use connection_state::ConnectionState;
 use meshes::{MeshHandles, free_mesh_handles};
@@ -109,8 +109,8 @@ fn main() {
         .add_system(move_build_marker)
         .add_system(rotate_build_marker)
         .add_system(build_request_events)
-        .add_system(send_place_block_requests)
-        .add_system(send_delete_block_requests)
+        .add_system(send_place_part_requests)
+        .add_system(send_delete_part_requests)
         .add_system(place_parts)
         .add_system(delete_parts)
         .add_system(update_voxels)

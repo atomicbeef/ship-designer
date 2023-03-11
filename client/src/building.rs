@@ -163,7 +163,7 @@ pub fn build_request_events(
     };
 
     if mouse_buttons.just_pressed(MouseButton::Left) {
-        // Block deletion
+        // Part deletion
         if keys.pressed(KeyCode::LAlt) {
             let network_id = network_id_query.get(part_entity).unwrap();
             delete_part_request_writer.send(DeletePartRequest(*network_id));
@@ -189,7 +189,7 @@ pub fn build_request_events(
                 regenerate_part_mesh_writer.send(RegeneratePartMesh(part_entity));
                 regenerate_collider_writer.send(RegenerateColliders(part_entity));
             }
-        // Block placement
+        // Part placement
         } else {
             if let Ok(construct_transform) = construct_transform_query.get(construct) {
                 if let Some((marker_transform, marker_collider)) = marker_query.iter().next() {
@@ -216,22 +216,22 @@ pub fn build_request_events(
     }
 }
 
-pub fn send_place_block_requests(
+pub fn send_place_part_requests(
     mut connection_state: ResMut<ConnectionState>,
     mut place_part_request_reader: EventReader<PlacePartRequest>
 ) {
-    for place_block_request in place_part_request_reader.iter() {
-        let packet: Packet = place_block_request.into();
+    for place_part_request in place_part_request_reader.iter() {
+        let packet: Packet = place_part_request.into();
         connection_state.client.send((&packet).into(), Channel::PartCommands.into(), SendMode::Reliable);
     }
 }
 
-pub fn send_delete_block_requests(
+pub fn send_delete_part_requests(
     mut connection_state: ResMut<ConnectionState>,
     mut delete_part_request_reader: EventReader<DeletePartRequest>
 ) {
-    for delete_block_request in delete_part_request_reader.iter() {
-        let packet: Packet = delete_block_request.into();
+    for delete_part_request in delete_part_request_reader.iter() {
+        let packet: Packet = delete_part_request.into();
         connection_state.client.send((&packet).into(), Channel::PartCommands.into(), SendMode::Reliable);
     }
 }

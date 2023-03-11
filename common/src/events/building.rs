@@ -73,9 +73,9 @@ impl TryFrom<Packet> for DeletePartRequest {
 }
 
 impl From<&DeletePartRequest> for Packet {
-    fn from(delete_block_request: &DeletePartRequest) -> Self {
+    fn from(delete_part_request: &DeletePartRequest) -> Self {
         let mut packet = Packet::new(PacketType::DeletePart);
-        delete_block_request.0.serialize(&mut packet);
+        delete_part_request.0.serialize(&mut packet);
         packet
     }
 }

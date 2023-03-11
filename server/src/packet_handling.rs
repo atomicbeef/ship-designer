@@ -12,8 +12,8 @@ use crate::server_state::ServerState;
 pub fn process_packets(
     mut state: NonSendMut<ServerState>,
     mut players: ResMut<Players>,
-    mut place_block_request_writer: EventWriter<PlacePartRequest>,
-    mut delete_block_request_writer: EventWriter<DeletePartRequest>,
+    mut place_part_request_writer: EventWriter<PlacePartRequest>,
+    mut delete_part_request_writer: EventWriter<DeletePartRequest>,
     mut client_connected_writer: EventWriter<PlayerConnected>,
     mut client_disconnected_writer: EventWriter<PlayerDisconnected>,
 ) {
@@ -49,8 +49,8 @@ pub fn process_packets(
                         debug!("Received packet {:?}", packet);
                         generate_events(
                             packet,
-                            &mut place_block_request_writer,
-                            &mut delete_block_request_writer,
+                            &mut place_part_request_writer,
+                            &mut delete_part_request_writer,
                         );
                     },
                     Err(err) => {
@@ -88,14 +88,14 @@ pub fn process_packets(
 
 fn generate_events(
     packet: Packet,
-    place_block_writer: &mut EventWriter<PlacePartRequest>,
-    delete_block_writer: &mut EventWriter<DeletePartRequest>,
+    place_part_writer: &mut EventWriter<PlacePartRequest>,
+    delete_part_writer: &mut EventWriter<DeletePartRequest>,
 ) {
     match packet.packet_type() {
         PacketType::PlacePart => {
             match PlacePartRequest::try_from(packet) {
-                Ok(place_block_request) => {
-                    place_block_writer.send(place_block_request);
+                Ok(place_part_request) => {
+                    place_part_writer.send(place_part_request);
                 },
                 Err(err) => {
                     warn!(?err);
@@ -104,8 +104,8 @@ fn generate_events(
         },
         PacketType::DeletePart => {
             match DeletePartRequest::try_from(packet) {
-                Ok(delete_block_request) => {
-                    delete_block_writer.send(delete_block_request);
+                Ok(delete_part_request) => {
+                    delete_part_writer.send(delete_part_request);
                 },
                 Err(err) => {
                     warn!(?err);

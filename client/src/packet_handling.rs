@@ -72,8 +72,8 @@ pub fn process_packets(
 
 fn generate_events(
     packet: Packet,
-    place_black_command_writer: &mut EventWriter<PlacePartCommand>,
-    delete_block_command_writer: &mut EventWriter<DeletePartCommand>,
+    place_part_command_writer: &mut EventWriter<PlacePartCommand>,
+    delete_part_command_writer: &mut EventWriter<DeletePartCommand>,
     player_connected_writer: &mut EventWriter<PlayerConnected>,
     player_disconnected_writer: &mut EventWriter<PlayerDisconnected>,
     initial_state_writer: &mut EventWriter<InitialState>,
@@ -82,8 +82,8 @@ fn generate_events(
     match packet.packet_type() {
         PacketType::PlacePart => {
             match PlacePartCommand::try_from(packet) {
-                Ok(place_block_command) => {
-                    place_black_command_writer.send(place_block_command);
+                Ok(place_part_command) => {
+                    place_part_command_writer.send(place_part_command);
                 },
                 Err(err) => {
                     warn!(?err);
@@ -92,8 +92,8 @@ fn generate_events(
         },
         PacketType::DeletePart => {
             match DeletePartCommand::try_from(packet) {
-                Ok(delete_block_command) => {
-                    delete_block_command_writer.send(delete_block_command);
+                Ok(delete_part_command) => {
+                    delete_part_command_writer.send(delete_part_command);
                 },
                 Err(err) => {
                     warn!(?err);
