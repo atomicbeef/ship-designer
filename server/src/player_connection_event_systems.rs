@@ -5,7 +5,7 @@ use uflow::SendMode;
 use common::channels::Channel;
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::network_id::NetworkId;
-use common::shape::{ShapeHandle, Shapes, ShapeNetworkRepr};
+use common::part::{PartHandle, Parts, PartNetworkRepr};
 use common::compact_transform::CompactTransform;
 use common::packets::Packet;
 use common::player::{Player, Players};
@@ -17,8 +17,8 @@ pub fn send_player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
     players: Res<Players>,
     mut server_state: NonSendMut<ServerState>,
-    shapes: Res<Shapes>,
-    shape_query: Query<(&ShapeHandle, &Transform, &NetworkId)>,
+    parts: Res<Parts>,
+    part_query: Query<(&PartHandle, &Transform, &NetworkId)>,
     ship_children_query: Query<&Children>,
 ) {
     for (ship, ship_network_id, ship_transform) in ship_query.iter() {
@@ -38,31 +38,31 @@ pub fn send_player_connected(
             // Send the current state of the world to the new player
             let players: Vec<Player> = players.players().cloned().collect();
 
-            let mut shape_data: Vec<(ShapeNetworkRepr, CompactTransform, NetworkId)> = Vec::new();
+            let mut part_data: Vec<(PartNetworkRepr, CompactTransform, NetworkId)> = Vec::new();
             let ship_children = ship_children_query.get(ship).unwrap();
             for &child in ship_children {
-                if let Ok((shape_handle, transform, network_id)) = shape_query.get(child) {
-                    let shape_network_repr = match shapes.get(shape_handle) {
-                        Some(shape) => match shape.parent_shape_id() {
-                            Some(_) => ShapeNetworkRepr::Child(shape.clone()),
-                            None => ShapeNetworkRepr::Predefined(shape_handle.id()),
+                if let Ok((part_handle, transform, network_id)) = part_query.get(child) {
+                    let part_network_repr = match parts.get(part_handle) {
+                        Some(part) => match part.parent_part_id() {
+                            Some(_) => PartNetworkRepr::Child(part.clone()),
+                            None => PartNetworkRepr::Predefined(part_handle.id()),
                         },
                         None => {
-                            warn!("Attempted to send non-existent shape with ID {:?} to new player!", shape_handle.id());
+                            warn!("Attempted to send non-existent part with ID {:?} to new player!", part_handle.id());
                             continue;
                         }
                     };
     
-                    let shape_transform = CompactTransform::from(*transform);
+                    let part_transform = CompactTransform::from(*transform);
     
-                    shape_data.push((shape_network_repr, shape_transform, *network_id));
+                    part_data.push((part_network_repr, part_transform, *network_id));
                 }
             }
 
             let initial_state = InitialState {
                 players,
                 body_network_id: *ship_network_id,
-                shapes: shape_data,
+                parts: part_data,
                 body_transform: CompactTransform::from(*ship_transform)
             };
             let initial_state_packet = Packet::from(&initial_state);
@@ -72,7 +72,7 @@ pub fn send_player_connected(
             server_state.send_to_player(
                 player_connected.id,
                 (&initial_state_packet).into(),
-                Channel::ShapeCommands.into(),
+                Channel::PartCommands.into(),
                 SendMode::Reliable
             );
         }

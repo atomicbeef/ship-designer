@@ -1,7 +1,7 @@
 use crate::network_id::NetworkId;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
 use crate::player::{Player, PlayerId};
-use crate::shape::ShapeNetworkRepr;
+use crate::part::PartNetworkRepr;
 use crate::compact_transform::CompactTransform;
 
 pub struct PlayerConnected {
@@ -50,7 +50,7 @@ impl From<&PlayerDisconnected> for Packet {
 pub struct InitialState {
     pub players: Vec<Player>,
     pub body_network_id: NetworkId,
-    pub shapes: Vec<(ShapeNetworkRepr, CompactTransform, NetworkId)>,
+    pub parts: Vec<(PartNetworkRepr, CompactTransform, NetworkId)>,
     pub body_transform: CompactTransform
 }
 
@@ -60,9 +60,9 @@ impl TryFrom<Packet> for InitialState {
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
         let players: Vec<Player> = Vec::deserialize(&mut packet)?;
         let body_network_id = NetworkId::deserialize(&mut packet)?;
-        let shapes: Vec<(ShapeNetworkRepr, CompactTransform, NetworkId)> = Vec::deserialize(&mut packet)?;
+        let partss: Vec<(PartNetworkRepr, CompactTransform, NetworkId)> = Vec::deserialize(&mut packet)?;
         let body_transform = CompactTransform::deserialize(&mut packet)?;
-        Ok(Self { players, body_network_id, shapes, body_transform })
+        Ok(Self { players, body_network_id, parts: partss, body_transform })
     }
 }
 
@@ -71,7 +71,7 @@ impl From<&InitialState> for Packet {
         let mut packet = Packet::new(PacketType::InitialState);
         (&initial_state.players).serialize(&mut packet);
         (&initial_state.body_network_id).serialize(&mut packet);
-        (&initial_state.shapes).serialize(&mut packet);
+        (&initial_state.parts).serialize(&mut packet);
         (&initial_state.body_transform).serialize(&mut packet);
         packet
     }

@@ -2,128 +2,128 @@ use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::prelude::systems::init_colliders;
-use common::colliders::{ShapeCollider, RegenerateColliders};
+use common::colliders::{PartCollider, RegenerateColliders};
 use common::player::Players;
 use uflow::SendMode;
 
 use common::colliders::{ColliderData, generate_collider_data};
 use common::channels::Channel;
-use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::events::building::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
 use common::index::Index;
 use common::network_id::NetworkId;
 use common::packets::Packet;
-use common::shape::{Shapes, ShapeHandle};
+use common::part::{Parts, PartHandle};
 
 use crate::network_id_generator::NetworkIdGenerator;
 use crate::server_state::ServerState;
 
-pub fn spawn_shape(
+pub fn spawn_part(
     commands: &mut Commands,
-    shapes: &Shapes,
-    shape_handle: ShapeHandle,
+    parts: &Parts,
+    part_handle: PartHandle,
     transform: Transform,
-    shape_network_id: NetworkId,
+    part_network_id: NetworkId,
     body: Entity,
 ) -> Entity {
-    let shape = shapes.get(&shape_handle).unwrap();
+    let part = parts.get(&part_handle).unwrap();
 
-    let shape_entity = commands.spawn(shape_handle)
-        .insert(shape_network_id)
+    let part_entity = commands.spawn(part_handle)
+        .insert(part_network_id)
         .insert(TransformBundle::from_transform(transform))
         .id();
     
-    commands.entity(body).add_child(shape_entity);
+    commands.entity(body).add_child(part_entity);
 
-    let colliders = generate_collider_data(shape, transform);
+    let colliders = generate_collider_data(part, transform);
     for collider_data in colliders {
         let collider_entity = commands.spawn(collider_data.collider)
             .insert(TransformBundle::from_transform(collider_data.transform))
-            .insert(ShapeCollider::new(shape_entity))
+            .insert(PartCollider::new(part_entity))
             .id();
         commands.entity(body).add_child(collider_entity);
     }
 
-    shape_entity
+    part_entity
 }
 
-pub fn spawn_shape_exclusive(
+pub fn spawn_part_exclusive(
     world: &mut World,
-    shape_handle: ShapeHandle,
+    part_handle: PartHandle,
     transform: Transform,
-    shape_network_id: NetworkId,
+    part_network_id: NetworkId,
     body: Entity,
     colliders: Vec<ColliderData>
 ) -> Entity {
-    let shape_entity = world.spawn(shape_handle)
-        .insert(shape_network_id)
+    let part_entity = world.spawn(part_handle)
+        .insert(part_network_id)
         .insert(TransformBundle::from_transform(transform))
         .id();
     
-    (AddChild { parent: body, child: shape_entity }).write(world);
+    (AddChild { parent: body, child: part_entity }).write(world);
     
     for collider_data in colliders {
         let collider_entity = world.spawn(collider_data.collider)
             .insert(TransformBundle::from_transform(collider_data.transform))
-            .insert(ShapeCollider::new(shape_entity))
+            .insert(PartCollider::new(part_entity))
             .id();
         (AddChild { parent: body, child: collider_entity }).write(world);
     }
 
-    shape_entity
+    part_entity
 }
 
-pub fn confirm_place_shape_requests(
+pub fn confirm_place_part_requests(
     world: &mut World,
 ) {
-    let place_shape_requests: Vec<PlaceShapeRequest> = world.get_resource_mut::<Events<PlaceShapeRequest>>()
+    let place_part_requests: Vec<PlacePartRequest> = world.get_resource_mut::<Events<PlacePartRequest>>()
         .unwrap()
         .drain()
         .collect();
 
-    for place_shape_request in place_shape_requests {
-        let body = world.get_resource::<Index<NetworkId>>().unwrap().entity(&place_shape_request.body_network_id).unwrap();
+    for place_part_request in place_part_requests {
+        let body = world.get_resource::<Index<NetworkId>>().unwrap().entity(&place_part_request.body_network_id).unwrap();
         let body_transform = world.get::<GlobalTransform>(body).unwrap();
-        let shape_transform = Transform::from(place_shape_request.shape_transform);
-        let (_, shape_global_rotation, shape_global_translation) = body_transform.mul_transform(shape_transform).to_scale_rotation_translation();
+        let part_transform = Transform::from(place_part_request.part_transform);
+        let (_, part_global_rotation, part_global_translation) = body_transform.mul_transform(part_transform).to_scale_rotation_translation();
 
-        let (shape_handle, shape_center) = {
-            let shapes = world.get_resource::<Shapes>().unwrap();
-            let shape_handle = shapes.get_handle(place_shape_request.shape_id);
-            let shape_center = shapes.get(&shape_handle).unwrap().center();
-            (shape_handle, shape_center)
+        let (part_handle, part_center) = {
+            let parts = world.get_resource::<Parts>().unwrap();
+            let part_handle = parts.get_handle(place_part_request.part_id);
+            let part_center = parts.get(&part_handle).unwrap().center();
+            (part_handle, part_center)
         };
 
-        // Prevent shapes from being placed inside of each other
-        let shape_half_extents = shape_center - Vec3::splat(0.01);
+        // Prevent parts from being placed inside of each other
+        let part_half_extents = part_center - Vec3::splat(0.01);
         let rapier_context = world.get_resource::<RapierContext>().unwrap();
 
         if rapier_context.cast_shape(
-            shape_global_translation,
-            shape_global_rotation,
+            part_global_translation,
+            part_global_rotation,
             Vec3::splat(0.0001),
             &Collider::cuboid(
-                shape_half_extents.x,
-                shape_half_extents.y,
-                shape_half_extents.z
+                part_half_extents.x,
+                part_half_extents.y,
+                part_half_extents.z
             ),
             0.01,
             QueryFilter::default()
         ).is_none() {
             let network_id = world.get_resource_mut::<NetworkIdGenerator>().unwrap().generate();
             let colliders = {
-                let shapes = world.get_resource::<Shapes>().unwrap();
-                let shape = shapes.get(&shape_handle).unwrap();
-                generate_collider_data(shape, shape_transform)
+                let parts = world.get_resource::<Parts>().unwrap();
+                let part = parts.get(&part_handle).unwrap();
+                generate_collider_data(part, part_transform)
             };
 
-            spawn_shape_exclusive(world, shape_handle, shape_transform, network_id, body, colliders);
+            spawn_part_exclusive(world, part_handle, part_transform, network_id, body, colliders);
 
-            let mut place_shape_events = world.get_resource_mut::<Events<PlaceShapeCommand>>().unwrap();
-            place_shape_events.send(PlaceShapeCommand {
-                shape_id: place_shape_request.shape_id,
-                shape_network_id: network_id,
-                transform: place_shape_request.shape_transform,
-                body_network_id: place_shape_request.body_network_id
+            let mut place_part_events = world.get_resource_mut::<Events<PlacePartCommand>>().unwrap();
+            place_part_events.send(PlacePartCommand {
+                part_id: place_part_request.part_id,
+                part_network_id: network_id,
+                transform: place_part_request.part_transform,
+                body_network_id: place_part_request.body_network_id
             });
 
             // Update colliders in Rapier
@@ -135,72 +135,72 @@ pub fn confirm_place_shape_requests(
     }
 }
 
-pub fn confirm_delete_shape_requests(
+pub fn confirm_delete_part_requests(
     mut commands: Commands,
-    mut delete_shape_request_reader: EventReader<DeleteShapeRequest>,
-    mut send_delete_shape_writer: EventWriter<DeleteShapeCommand>,
-    network_id_query: Query<(Entity, &NetworkId), With<ShapeHandle>>,
+    mut delete_part_request_reader: EventReader<DeletePartRequest>,
+    mut send_delete_part_writer: EventWriter<DeletePartCommand>,
+    network_id_query: Query<(Entity, &NetworkId), With<PartHandle>>,
     ship_children_query: Query<&Children>,
-    shape_collider_query: Query<&ShapeCollider>,
+    part_collider_query: Query<&PartCollider>,
     parent_query: Query<&Parent>
 ) {
-    for delete_shape_request in delete_shape_request_reader.iter() {
-        for (shape_entity, network_id) in network_id_query.iter() {
-            if *network_id == delete_shape_request.0 {
-                let ship = parent_query.get(shape_entity).unwrap().get();
+    for delete_part_request in delete_part_request_reader.iter() {
+        for (part_entity, network_id) in network_id_query.iter() {
+            if *network_id == delete_part_request.0 {
+                let ship = parent_query.get(part_entity).unwrap().get();
 
                 // Remove colliders
                 let children = ship_children_query.get(ship).unwrap();
                 for &child in children {
-                    if let Ok(shape_collider) = shape_collider_query.get(child) {
-                        if shape_collider.shape == shape_entity {
+                    if let Ok(part_collider) = part_collider_query.get(child) {
+                        if part_collider.part == part_entity {
                             commands.entity(ship).remove_children(&[child]);
                             commands.entity(child).despawn();
                         }
                     }
                 }
 
-                commands.entity(ship).remove_children(&[shape_entity]);
-                commands.entity(shape_entity).despawn();
-                send_delete_shape_writer.send(DeleteShapeCommand(delete_shape_request.0));
+                commands.entity(ship).remove_children(&[part_entity]);
+                commands.entity(part_entity).despawn();
+                send_delete_part_writer.send(DeletePartCommand(delete_part_request.0));
                 break;
             }
         }
     }
 }
 
-pub fn send_place_shape_commands(
+pub fn send_place_part_commands(
     mut server_state: NonSendMut<ServerState>,
     players: Res<Players>,
-    mut send_place_shape_reader: EventReader<PlaceShapeCommand>
+    mut send_place_part_reader: EventReader<PlacePartCommand>
 ) {
-    for place_shape_command in send_place_shape_reader.iter() {
-        let packet = Packet::from(place_shape_command);
+    for place_part_command in send_place_part_reader.iter() {
+        let packet = Packet::from(place_part_command);
 
         for player_id in players.ids() {
             server_state.send_to_player(
                 *player_id,
                 (&packet).into(),
-                Channel::ShapeCommands.into(),
+                Channel::PartCommands.into(),
                 SendMode::Reliable
             );
         }
     }
 }
 
-pub fn send_delete_shape_commands(
+pub fn send_delete_part_commands(
     mut server_state: NonSendMut<ServerState>,
     players: Res<Players>,
-    mut send_delete_shape_reader: EventReader<DeleteShapeCommand>
+    mut send_delete_part_reader: EventReader<DeletePartCommand>
 ) {
-    for delete_shape_command in send_delete_shape_reader.iter() {
-        let packet = Packet::from(delete_shape_command);
+    for delete_part_command in send_delete_part_reader.iter() {
+        let packet = Packet::from(delete_part_command);
 
         for player_id in players.ids() {
             server_state.send_to_player(
                 *player_id,
                 (&packet).into(),
-                Channel::ShapeCommands.into(),
+                Channel::PartCommands.into(),
                 SendMode::Reliable
             );
         }
@@ -210,23 +210,23 @@ pub fn send_delete_shape_commands(
 pub fn regenerate_colliders(
     mut commands: Commands,
     mut regenerate_colliders_reader: EventReader<RegenerateColliders>,
-    parent_query: Query<&Parent, With<ShapeHandle>>,
+    parent_query: Query<&Parent, With<PartHandle>>,
     children_query: Query<&Children>,
-    shape_colliders_query: Query<&ShapeCollider>,
-    shape_query: Query<(&ShapeHandle, &Transform)>,
-    shapes: Res<Shapes>
+    part_colliders_query: Query<&PartCollider>,
+    part_query: Query<(&PartHandle, &Transform)>,
+    parts: Res<Parts>
 ) {
     for request in regenerate_colliders_reader.iter() {
-        let (shape_handle, transform) = shape_query.get(request.0).unwrap();
-        let shape = shapes.get(&shape_handle).unwrap();
+        let (part_handle, transform) = part_query.get(request.0).unwrap();
+        let part = parts.get(&part_handle).unwrap();
 
         if let Ok(parent) = parent_query.get(request.0) {
             let body = parent.get();
 
             // Delete old colliders
             for &child in children_query.get(body).unwrap() {
-                if let Ok(shape_collider) = shape_colliders_query.get(child) {
-                    if shape_collider.shape == request.0 {
+                if let Ok(part_collider) = part_colliders_query.get(child) {
+                    if part_collider.part == request.0 {
                         commands.entity(body).remove_children(&[child]);
                         commands.entity(child).despawn();
                     }
@@ -234,11 +234,11 @@ pub fn regenerate_colliders(
             }
 
             // Spawn new colliders
-            let colliders = generate_collider_data(shape, *transform);
+            let colliders = generate_collider_data(part, *transform);
             for collider_data in colliders {
                 let collider_entity = commands.spawn(collider_data.collider)
                     .insert(TransformBundle::from_transform(collider_data.transform))
-                    .insert(ShapeCollider::new(request.0))
+                    .insert(PartCollider::new(request.0))
                     .id();
                 commands.entity(body).add_child(collider_entity);
             }

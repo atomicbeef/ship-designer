@@ -7,21 +7,21 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use building_material::BuildingMaterial;
 use common::colliders::{remove_unused_colliders, RegenerateColliders};
-use common::events::shape::UpdateVoxels;
+use common::events::part::UpdateVoxels;
 use common::index::{update_index, Index};
 use common::network_id::NetworkId;
 use common::player::Players;
 use iyes_loopless::prelude::*;
-use mesh_generation::{RegenerateShapeMesh, regenerate_shape_mesh, get_mesh_or_generate};
+use mesh_generation::{RegeneratePartMesh, regenerate_part_mesh, get_mesh_or_generate};
 use raycast_selection::{update_intersections, SelectionSource};
-use shape::update_voxels;
+use part::update_voxels;
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
-use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::events::building::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
-use common::predefined_shapes::add_hardcoded_shapes;
-use common::shape::{Shapes, ShapeId, FreedShapes, free_shapes};
+use common::predefined_parts::add_hardcoded_parts;
+use common::part::{Parts, PartId, FreedParts, free_parts};
 
 mod building;
 mod building_material;
@@ -33,9 +33,9 @@ mod packet_handling;
 mod player_connection_event_systems;
 mod raycast_selection;
 mod settings;
-mod shape;
+mod part;
 
-use building::{build_request_events, place_shapes, delete_shapes, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation, regenerate_colliders};
+use building::{build_request_events, place_parts, delete_parts, send_place_block_requests, send_delete_block_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation, regenerate_colliders};
 use camera::{FreeCameraPlugin, FreeCamera};
 use connection_state::ConnectionState;
 use meshes::{MeshHandles, free_mesh_handles};
@@ -85,7 +85,7 @@ fn main() {
         .add_plugin(MaterialPlugin::<BuildingMaterial>::default())
         .insert_resource(connection_state)
         .insert_resource(Players::new())
-        .insert_resource(Shapes::new())
+        .insert_resource(Parts::new())
         .insert_resource(MeshHandles::new())
         .insert_resource(Index::<NetworkId>::new())
         .add_stage_before(
@@ -94,16 +94,16 @@ fn main() {
             FixedTimestepStage::new(Duration::from_millis(16), "network_stage")
                 .with_stage(packet_process_stage)
         )
-        .add_event::<PlaceShapeRequest>()
-        .add_event::<PlaceShapeCommand>()
-        .add_event::<DeleteShapeRequest>()
-        .add_event::<DeleteShapeCommand>()
+        .add_event::<PlacePartRequest>()
+        .add_event::<PlacePartCommand>()
+        .add_event::<DeletePartRequest>()
+        .add_event::<DeletePartCommand>()
         .add_event::<PlayerConnected>()
         .add_event::<PlayerDisconnected>()
         .add_event::<InitialState>()
-        .add_event::<RegenerateShapeMesh>()
+        .add_event::<RegeneratePartMesh>()
         .add_event::<RegenerateColliders>()
-        .add_event::<FreedShapes>()
+        .add_event::<FreedParts>()
         .add_event::<UpdateVoxels>()
         .add_system_to_stage(CoreStage::First, update_intersections)
         .add_system(move_build_marker)
@@ -111,20 +111,20 @@ fn main() {
         .add_system(build_request_events)
         .add_system(send_place_block_requests)
         .add_system(send_delete_block_requests)
-        .add_system(place_shapes)
-        .add_system(delete_shapes)
+        .add_system(place_parts)
+        .add_system(delete_parts)
         .add_system(update_voxels)
-        .add_system(regenerate_shape_mesh)
+        .add_system(regenerate_part_mesh)
         .add_system(regenerate_colliders)
-        .add_system(free_shapes)
+        .add_system(free_parts)
         .add_system(free_mesh_handles)
         .add_system(player_connected)
         .add_system(player_disconnected)
         .add_system(initial_state_setup.run_on_event::<InitialState>())
         .add_system(remove_unused_colliders)
         .add_system_to_stage(CoreStage::PostUpdate, update_index::<NetworkId>)
-        .register_type::<common::shape::ShapeId>()
-        .register_type::<common::shape::ShapeHandle>()
+        .register_type::<common::part::PartId>()
+        .register_type::<common::part::PartHandle>()
         .run();
 }
 
@@ -135,19 +135,19 @@ fn set_window_title(mut windows: ResMut<Windows>) {
 }
 
 fn setup(
-    mut shapes: ResMut<Shapes>,
+    mut parts: ResMut<Parts>,
     mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands
 ) {
-    let shape_handles = add_hardcoded_shapes(&mut shapes);
+    let part_handles = add_hardcoded_parts(&mut parts);
 
-    for shape_handle in shape_handles {
-        let shape = shapes.get(&shape_handle).unwrap();
-        let mesh = mesh_generation::generate_shape_mesh(shape);
+    for part_handle in part_handles {
+        let part = parts.get(&part_handle).unwrap();
+        let mesh = mesh_generation::generate_part_mesh(part);
         let mesh_handle = meshes.add(mesh);
-        mesh_handles.add(shape_handle.id(), mesh_handle);
+        mesh_handles.add(part_handle.id(), mesh_handle);
     }
 
     commands.spawn(Camera3dBundle {
@@ -157,19 +157,19 @@ fn setup(
     .insert(FreeCamera)
     .insert(SelectionSource::new());
 
-    let marker_shape_handle = shapes.get_handle(ShapeId::from(1));
-    let marker_shape = shapes.get(&marker_shape_handle).unwrap();
-    // If we use exactly the shape bounds, then we can't place shapes next to each other
-    let marker_half_extents = marker_shape.center() - Vec3::splat(0.01);
+    let marker_part_handle = parts.get_handle(PartId::from(1));
+    let marker_part = parts.get(&marker_part_handle).unwrap();
+    // If we use exactly the part bounds, then we can't place parts next to each other
+    let marker_half_extents = marker_part.center() - Vec3::splat(0.01);
 
     commands.spawn(BuildMarker)
         .insert(BuildMarkerOrientation(Quat::IDENTITY))
         .insert(PbrBundle {
-            mesh: get_mesh_or_generate(marker_shape_handle.id(), marker_shape, &mut mesh_handles, &mut meshes),
+            mesh: get_mesh_or_generate(marker_part_handle.id(), marker_part, &mut mesh_handles, &mut meshes),
             material: materials.add(Color::rgba(0.25, 0.62, 0.26, 0.5).into()),
             ..Default::default()
         })
-        .insert(marker_shape_handle)
+        .insert(marker_part_handle)
         .insert(Collider::cuboid(
             marker_half_extents.x,
             marker_half_extents.y,

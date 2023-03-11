@@ -2,7 +2,7 @@ use core::f32::consts::PI;
 
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
-use common::colliders::{generate_collider_data, ShapeCollider, RegenerateColliders};
+use common::colliders::{generate_collider_data, PartCollider, RegenerateColliders};
 use common::reparent_global_transform::ReparentGlobalTransform;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
@@ -11,14 +11,14 @@ use common::index::Index;
 use common::network_id::NetworkId;
 use common::compact_transform::CompactTransform;
 use common::channels::Channel;
-use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use common::events::building::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
 use common::materials::Material;
 use common::packets::Packet;
-use common::shape::{ShapeHandle, Shapes, ShapeId, VOXEL_SIZE};
+use common::part::{PartHandle, Parts, PartId, VOXEL_SIZE};
 
 use crate::building_material::BuildingMaterial;
 use crate::connection_state::ConnectionState;
-use crate::mesh_generation::{RegenerateShapeMesh, get_mesh_or_generate};
+use crate::mesh_generation::{RegeneratePartMesh, get_mesh_or_generate};
 use crate::meshes::MeshHandles;
 use crate::raycast_selection::{SelectionSource, Selectable};
 
@@ -42,13 +42,13 @@ pub struct BuildMarker;
 pub struct BuildMarkerOrientation(pub Quat);
 
 pub fn move_build_marker(
-    mut marker_query: Query<(&mut Transform, &BuildMarkerOrientation, &ShapeHandle), With<BuildMarker>>,
+    mut marker_query: Query<(&mut Transform, &BuildMarkerOrientation, &PartHandle), With<BuildMarker>>,
     body_transform_query: Query<&GlobalTransform>,
     parent_query: Query<&Parent>,
     selection_source_query: Query<&SelectionSource>,
-    shapes: Res<Shapes>
+    parts: Res<Parts>
 ) {
-    let (mut marker_transform, marker_orientation, shape_handle) = match marker_query.iter_mut().next() {
+    let (mut marker_transform, marker_orientation, part_handle) = match marker_query.iter_mut().next() {
         Some(x) => x,
         None => { return; }
     };
@@ -57,19 +57,19 @@ pub fn move_build_marker(
         if let Some((collider, intersection)) = selection_source.intersection() {
             let body = parent_query.get(collider).unwrap().get();
 
-            let shape = shapes.get(shape_handle).unwrap();
+            let part = parts.get(part_handle).unwrap();
 
-            let rotated_center = marker_orientation.0.mul_vec3(shape.center()).abs();
+            let rotated_center = marker_orientation.0.mul_vec3(part.center()).abs();
             
             // If the side length is odd, you need to add VOXEL_SIZE / 2.0 as an offset to center it
             let mut odd_offset = Vec3::splat(0.0);
-            if shape.width() % 2 == 1 {
+            if part.width() % 2 == 1 {
                 odd_offset.x += VOXEL_SIZE / 2.0;
             }
-            if shape.height() % 2 == 1 {
+            if part.height() % 2 == 1 {
                 odd_offset.y += VOXEL_SIZE / 2.0;
             }
-            if shape.depth() % 2 == 1 {
+            if part.depth() % 2 == 1 {
                 odd_offset.z += VOXEL_SIZE / 2.0;
             }
             odd_offset = marker_orientation.0.mul_vec3(odd_offset).abs();
@@ -130,15 +130,15 @@ pub fn rotate_build_marker(
 pub fn build_request_events(
     mouse_buttons: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
-    mut place_shape_request_writer: EventWriter<PlaceShapeRequest>,
-    mut delete_shape_request_writer: EventWriter<DeleteShapeRequest>,
+    mut place_part_request_writer: EventWriter<PlacePartRequest>,
+    mut delete_part_request_writer: EventWriter<DeletePartRequest>,
     selection_source_query: Query<&SelectionSource>,
-    mut voxel_intersection_query: Query<(&GlobalTransform, &mut ShapeHandle)>,
-    mut shapes: ResMut<Shapes>,
-    mut regenerate_shape_mesh_writer: EventWriter<RegenerateShapeMesh>,
+    mut voxel_intersection_query: Query<(&GlobalTransform, &mut PartHandle)>,
+    mut parts: ResMut<Parts>,
+    mut regenerate_part_mesh_writer: EventWriter<RegeneratePartMesh>,
     mut regenerate_collider_writer: EventWriter<RegenerateColliders>,
     parent_query: Query<&Parent>,
-    shape_collider_query: Query<&ShapeCollider>,
+    part_collider_query: Query<&PartCollider>,
     ship_transform_query: Query<&GlobalTransform>,
     marker_query: Query<(&GlobalTransform, &Collider), With<BuildMarker>>,
     network_id_query: Query<&NetworkId>,
@@ -152,12 +152,12 @@ pub fn build_request_events(
         None => { return; }
     };
 
-    let shape_entity = match shape_collider_query.get(entity) {
-        Ok(collider) => collider.shape,
+    let part_entity = match part_collider_query.get(entity) {
+        Ok(collider) => collider.part,
         Err(_) => { return; }
     };
 
-    let body = match parent_query.get(shape_entity) {
+    let body = match parent_query.get(part_entity) {
         Ok(parent) => parent.get(),
         Err(_) => { return; }
     };
@@ -165,29 +165,29 @@ pub fn build_request_events(
     if mouse_buttons.just_pressed(MouseButton::Left) {
         // Block deletion
         if keys.pressed(KeyCode::LAlt) {
-            let network_id = network_id_query.get(shape_entity).unwrap();
-            delete_shape_request_writer.send(DeleteShapeRequest(*network_id));
+            let network_id = network_id_query.get(part_entity).unwrap();
+            delete_part_request_writer.send(DeletePartRequest(*network_id));
         // Voxel deletion
         } else if keys.pressed(KeyCode::LControl) {
-            if let Ok((shape_transform, mut shape_handle)) = voxel_intersection_query.get_mut(shape_entity) {
-                let inverse = shape_transform.affine().inverse();
+            if let Ok((part_transform, mut part_handle)) = voxel_intersection_query.get_mut(part_entity) {
+                let inverse = part_transform.affine().inverse();
                 
                 if !inverse.is_finite() {
-                    debug!("[Voxel deletion] Uninvertible transform matrix: {}", shape_transform.affine());
+                    debug!("[Voxel deletion] Uninvertible transform matrix: {}", part_transform.affine());
                     return;
                 }
 
-                let shape = shapes.get_mut(&mut shape_handle).unwrap();
+                let part = parts.get_mut(&mut part_handle).unwrap();
 
                 let inverse_normal = inverse.transform_vector3(intersection_data.normal);
                 let inverse_intersection = inverse.transform_point3(intersection_data.point);
                 
-                let voxel_pos = (inverse_intersection + shape.center() - inverse_normal * Vec3::splat(VOXEL_SIZE / 2.0)) / VOXEL_SIZE;
+                let voxel_pos = (inverse_intersection + part.center() - inverse_normal * Vec3::splat(VOXEL_SIZE / 2.0)) / VOXEL_SIZE;
 
-                shape.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
+                part.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
 
-                regenerate_shape_mesh_writer.send(RegenerateShapeMesh(shape_entity));
-                regenerate_collider_writer.send(RegenerateColliders(shape_entity));
+                regenerate_part_mesh_writer.send(RegeneratePartMesh(part_entity));
+                regenerate_collider_writer.send(RegenerateColliders(part_entity));
             }
         // Block placement
         } else {
@@ -200,13 +200,13 @@ pub fn build_request_events(
                         marker_collider,
                         QueryFilter::new().exclude_sensors()
                     ).is_none() {
-                        let shape_id = ShapeId::from(1);
+                        let part_id = PartId::from(1);
 
                         let ship_space_transform = marker_transform.reparented_to(&ship_transform);
     
-                        place_shape_request_writer.send(PlaceShapeRequest {
-                            shape_id,
-                            shape_transform: CompactTransform::from(ship_space_transform),
+                        place_part_request_writer.send(PlacePartRequest {
+                            part_id,
+                            part_transform: CompactTransform::from(ship_space_transform),
                             body_network_id: *network_id_query.get(body).unwrap()
                         });
                     }
@@ -218,119 +218,119 @@ pub fn build_request_events(
 
 pub fn send_place_block_requests(
     mut connection_state: ResMut<ConnectionState>,
-    mut place_shape_request_reader: EventReader<PlaceShapeRequest>
+    mut place_part_request_reader: EventReader<PlacePartRequest>
 ) {
-    for place_block_request in place_shape_request_reader.iter() {
+    for place_block_request in place_part_request_reader.iter() {
         let packet: Packet = place_block_request.into();
-        connection_state.client.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
+        connection_state.client.send((&packet).into(), Channel::PartCommands.into(), SendMode::Reliable);
     }
 }
 
 pub fn send_delete_block_requests(
     mut connection_state: ResMut<ConnectionState>,
-    mut delete_shape_request_reader: EventReader<DeleteShapeRequest>
+    mut delete_part_request_reader: EventReader<DeletePartRequest>
 ) {
-    for delete_block_request in delete_shape_request_reader.iter() {
+    for delete_block_request in delete_part_request_reader.iter() {
         let packet: Packet = delete_block_request.into();
-        connection_state.client.send((&packet).into(), Channel::ShapeCommands.into(), SendMode::Reliable);
+        connection_state.client.send((&packet).into(), Channel::PartCommands.into(), SendMode::Reliable);
     }
 }
 
-pub fn spawn_shape(
+pub fn spawn_part(
     commands: &mut Commands,
     mesh_handles: &mut MeshHandles,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<BuildingMaterial>,
-    shapes: &Shapes,
-    shape_handle: ShapeHandle,
+    parts: &Parts,
+    part_handle: PartHandle,
     transform: Transform,
-    shape_network_id: NetworkId,
+    part_network_id: NetworkId,
     body: Entity,
 ) -> Entity {
-    let shape = shapes.get(&shape_handle).unwrap();
+    let part = parts.get(&part_handle).unwrap();
 
-    let mesh_handle = get_mesh_or_generate(shape_handle.id(), shape, mesh_handles, meshes);
+    let mesh_handle = get_mesh_or_generate(part_handle.id(), part, mesh_handles, meshes);
 
-    let shape_entity = commands.spawn(MaterialMeshBundle::<BuildingMaterial> {
+    let part_entity = commands.spawn(MaterialMeshBundle::<BuildingMaterial> {
             mesh: mesh_handle,
             material: materials.add(BuildingMaterial { color: Color::rgb(0.0, 0.3, 0.5).into() }),
             transform,
             ..Default::default()
         })
-        .insert(shape_handle)
-        .insert(shape_network_id)
+        .insert(part_handle)
+        .insert(part_network_id)
         .id();
     
-    commands.entity(body).add_child(shape_entity);
+    commands.entity(body).add_child(part_entity);
 
-    let colliders = generate_collider_data(shape, transform);
+    let colliders = generate_collider_data(part, transform);
     for collider_data in colliders {
         let collider_entity = commands.spawn(collider_data.collider)
             .insert(TransformBundle::from_transform(collider_data.transform))
-            .insert(ShapeCollider::new(shape_entity))
+            .insert(PartCollider::new(part_entity))
             .insert(Selectable)
             .id();
         commands.entity(body).add_child(collider_entity);
     }
 
-    shape_entity
+    part_entity
 }
 
-pub fn place_shapes(
-    mut place_shape_command_reader: EventReader<PlaceShapeCommand>,
+pub fn place_parts(
+    mut place_part_command_reader: EventReader<PlacePartCommand>,
     mut commands: Commands,
     mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<BuildingMaterial>>,
-    shapes: Res<Shapes>,
+    parts: Res<Parts>,
     network_id_index: Res<Index<NetworkId>>
 ) {
-    for event in place_shape_command_reader.iter() {
+    for event in place_part_command_reader.iter() {
         let transform = Transform::from(event.transform);
-        let entity = spawn_shape(
+        let entity = spawn_part(
             &mut commands,
             &mut mesh_handles,
             &mut meshes,
             &mut materials,
-            &shapes,
-            shapes.get_handle(event.shape_id),
+            &parts,
+            parts.get_handle(event.part_id),
             transform,
-            event.shape_network_id,
+            event.part_network_id,
             network_id_index.entity(&event.body_network_id).unwrap()
         );
         
-        debug!("Spawned shape with entity ID {:?}", entity);
+        debug!("Spawned part with entity ID {:?}", entity);
     }
 }
 
-pub fn delete_shapes(
-    mut delete_shape_command_reader: EventReader<DeleteShapeCommand>,
+pub fn delete_parts(
+    mut delete_part_command_reader: EventReader<DeletePartCommand>,
     mut commands: Commands,
-    shape_query: Query<(Entity, &NetworkId)>,
+    part_query: Query<(Entity, &NetworkId)>,
     parent_query: Query<&Parent>,
     ship_children_query: Query<&Children>,
-    shape_collider_query: Query<&ShapeCollider>,
+    part_collider_query: Query<&PartCollider>,
 ) {
-    for event in delete_shape_command_reader.iter() {
-        for (shape_entity, network_id) in shape_query.iter() {
+    for event in delete_part_command_reader.iter() {
+        for (part_entity, network_id) in part_query.iter() {
             if *network_id == event.0 {
-                let ship = parent_query.get(shape_entity).unwrap().get();
+                let ship = parent_query.get(part_entity).unwrap().get();
 
                 // Remove colliders
                 let children = ship_children_query.get(ship).unwrap();
                 for &child in children {
-                    if let Ok(shape_collider) = shape_collider_query.get(child) {
-                        if shape_collider.shape == shape_entity {
+                    if let Ok(part_collider) = part_collider_query.get(child) {
+                        if part_collider.part == part_entity {
                             commands.entity(ship).remove_children(&[child]);
                             commands.entity(child).despawn();
                         }
                     }
                 }
 
-                // Remove shape
-                commands.entity(ship).remove_children(&[shape_entity]);
-                commands.entity(shape_entity).despawn();
-                debug!("Deleting shape with entity ID {:?}", shape_entity);
+                // Remove part
+                commands.entity(ship).remove_children(&[part_entity]);
+                commands.entity(part_entity).despawn();
+                debug!("Deleting part with entity ID {:?}", part_entity);
             }
         }
     }
@@ -339,23 +339,23 @@ pub fn delete_shapes(
 pub fn regenerate_colliders(
     mut commands: Commands,
     mut regenerate_colliders_reader: EventReader<RegenerateColliders>,
-    parent_query: Query<&Parent, With<ShapeHandle>>,
+    parent_query: Query<&Parent, With<PartHandle>>,
     children_query: Query<&Children>,
-    shape_colliders_query: Query<&ShapeCollider>,
-    shape_query: Query<(&ShapeHandle, &Transform)>,
-    shapes: Res<Shapes>
+    part_colliders_query: Query<&PartCollider>,
+    part_query: Query<(&PartHandle, &Transform)>,
+    parts: Res<Parts>
 ) {
     for request in regenerate_colliders_reader.iter() {
-        let (shape_handle, transform) = shape_query.get(request.0).unwrap();
-        let shape = shapes.get(&shape_handle).unwrap();
+        let (part_handle, transform) = part_query.get(request.0).unwrap();
+        let part = parts.get(&part_handle).unwrap();
 
         if let Ok(parent) = parent_query.get(request.0) {
             let body = parent.get();
 
             // Delete old colliders
             for &child in children_query.get(body).unwrap() {
-                if let Ok(shape_collider) = shape_colliders_query.get(child) {
-                    if shape_collider.shape == request.0 {
+                if let Ok(part_collider) = part_colliders_query.get(child) {
+                    if part_collider.part == request.0 {
                         commands.entity(body).remove_children(&[child]);
                         commands.entity(child).despawn();
                     }
@@ -363,11 +363,11 @@ pub fn regenerate_colliders(
             }
 
             // Spawn new colliders
-            let colliders = generate_collider_data(shape, *transform);
+            let colliders = generate_collider_data(part, *transform);
             for collider_data in colliders {
                 let collider_entity = commands.spawn(collider_data.collider)
                     .insert(TransformBundle::from_transform(collider_data.transform))
-                    .insert(ShapeCollider::new(request.0))
+                    .insert(PartCollider::new(request.0))
                     .insert(Selectable)
                     .id();
                 commands.entity(body).add_child(collider_entity);

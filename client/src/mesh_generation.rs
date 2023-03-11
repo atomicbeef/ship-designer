@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
-use common::shape::{Shape, ShapeHandle, Shapes, VOXEL_SIZE, ShapeId};
+use common::part::{Part, PartHandle, Parts, VOXEL_SIZE, PartId};
 use common::materials::Material;
 
 use crate::meshes::MeshHandles;
@@ -75,8 +75,8 @@ fn add_box_mesh_data(
     *index_offset += 24;
 }
 
-pub fn generate_shape_mesh(
-    shape: &Shape
+pub fn generate_part_mesh(
+    part: &Part
 ) -> Mesh {
     let mut vertices: Vec<[f32; 3]> = Vec::new();
     let mut triangles: Vec<u32> = Vec::new();
@@ -84,10 +84,10 @@ pub fn generate_shape_mesh(
     let mut normals: Vec<[f32; 3]> = Vec::new();
     let mut uvs: Vec<[f32; 2]> = Vec::new();
 
-    for s_x in 0..shape.width() {
-        for s_y in 0..shape.height() {
-            for s_z in 0..shape.depth() {
-                if matches!(shape.get(s_x, s_y, s_z), Material::Empty) {
+    for s_x in 0..part.width() {
+        for s_y in 0..part.height() {
+            for s_z in 0..part.depth() {
+                if matches!(part.get(s_x, s_y, s_z), Material::Empty) {
                     continue;
                 }
 
@@ -114,9 +114,9 @@ pub fn generate_shape_mesh(
 
     // Center mesh to align with colliders
     for vertex in vertices.iter_mut() {
-        vertex[0] -= shape.width() as f32 * VOXEL_SIZE / 2.0;
-        vertex[1] -= shape.height() as f32 * VOXEL_SIZE / 2.0;
-        vertex[2] -= shape.depth() as f32 * VOXEL_SIZE / 2.0;
+        vertex[0] -= part.width() as f32 * VOXEL_SIZE / 2.0;
+        vertex[1] -= part.height() as f32 * VOXEL_SIZE / 2.0;
+        vertex[2] -= part.depth() as f32 * VOXEL_SIZE / 2.0;
     }
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -128,23 +128,23 @@ pub fn generate_shape_mesh(
     mesh
 }
 
-pub struct RegenerateShapeMesh(pub Entity);
+pub struct RegeneratePartMesh(pub Entity);
 
-pub fn regenerate_shape_mesh(
-    mut regenerate_shape_mesh_reader: EventReader<RegenerateShapeMesh>,
-    shape_handle_query: Query<&ShapeHandle>,
-    shapes: Res<Shapes>,
+pub fn regenerate_part_mesh(
+    mut regenerate_part_mesh_reader: EventReader<RegeneratePartMesh>,
+    part_handle_query: Query<&PartHandle>,
+    parts: Res<Parts>,
     mut mesh_handles: ResMut<MeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands
 ) {
-    for request in regenerate_shape_mesh_reader.iter() {
-        if let Ok(shape_handle) = shape_handle_query.get(request.0) {
-            if let Some(shape) = shapes.get(shape_handle) {
-                let mesh = generate_shape_mesh(shape);
+    for request in regenerate_part_mesh_reader.iter() {
+        if let Ok(part_handle) = part_handle_query.get(request.0) {
+            if let Some(part) = parts.get(part_handle) {
+                let mesh = generate_part_mesh(part);
                 let mesh_handle = meshes.add(mesh);
 
-                mesh_handles.update(shape_handle.id(), mesh_handle.clone());
+                mesh_handles.update(part_handle.id(), mesh_handle.clone());
                 
                 commands.entity(request.0).remove::<Handle<Mesh>>();
                 commands.entity(request.0).insert(mesh_handle);
@@ -154,18 +154,18 @@ pub fn regenerate_shape_mesh(
 }
 
 pub fn get_mesh_or_generate(
-    shape_id: ShapeId,
-    shape: &Shape,
+    part_id: PartId,
+    part: &Part,
     mesh_handles: &mut MeshHandles,
     meshes: &mut Assets<Mesh>
 ) -> Handle<Mesh> {
-    match mesh_handles.get(&shape_id) {
+    match mesh_handles.get(&part_id) {
         Some(mesh_handle) => mesh_handle.clone(),
         None => {
-            let mesh = generate_shape_mesh(shape);
+            let mesh = generate_part_mesh(part);
 
             let mesh_handle = meshes.add(mesh);
-            mesh_handles.add(shape_id, mesh_handle.clone());
+            mesh_handles.add(part_id, mesh_handle.clone());
 
             mesh_handle
         }

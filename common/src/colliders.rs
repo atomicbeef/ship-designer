@@ -2,16 +2,16 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
 
 use crate::materials::Material;
-use crate::shape::{Shape, ShapeHandle, VOXEL_SIZE};
+use crate::part::{Part, PartHandle, VOXEL_SIZE};
 
 #[derive(Clone, Copy, Component, PartialEq, Eq, Hash)]
-pub struct ShapeCollider {
-    pub shape: Entity
+pub struct PartCollider {
+    pub part: Entity
 }
 
-impl ShapeCollider {
-    pub fn new(shape: Entity) -> Self {
-        Self { shape }
+impl PartCollider {
+    pub fn new(part: Entity) -> Self {
+        Self { part }
     }
 }
 
@@ -22,21 +22,21 @@ pub struct ColliderData {
 }
 
 pub fn generate_collider_data(
-    shape: &Shape,
-    shape_transform: Transform
+    part: &Part,
+    part_transform: Transform
 ) -> Vec<ColliderData> {
     let mut colliders = Vec::new();
-    let mut tested = vec![false; shape.size() as usize];
+    let mut tested = vec![false; part.size() as usize];
 
-    for start_z in 0..shape.depth() {
-        for start_y in 0..shape.height() {
-            for start_x in 0..shape.width() {
-                let start_index = shape.pos_to_index(start_x, start_y, start_z);
+    for start_z in 0..part.depth() {
+        for start_y in 0..part.height() {
+            for start_x in 0..part.width() {
+                let start_index = part.pos_to_index(start_x, start_y, start_z);
                 if tested[start_index] {
                     continue; 
                 }
 
-                let material = shape.get(start_x, start_y, start_z);
+                let material = part.get(start_x, start_y, start_z);
 
                 if matches!(material, Material::Empty) {
                     tested[start_index] = true;
@@ -49,26 +49,26 @@ pub fn generate_collider_data(
                 let mut end_y = start_y;
                 let mut end_z = start_z;
 
-                for x in start_x + 1..shape.width() {
-                    let current_index = shape.pos_to_index(x, start_y, start_z);
-                    let test_material = shape.get_index(current_index);
+                for x in start_x + 1..part.width() {
+                    let current_index = part.pos_to_index(x, start_y, start_z);
+                    let test_material = part.get_index(current_index);
 
                     if test_material != material || tested[current_index] {
                         end_x = x - 1;
                         break;
                     }
 
-                    if x == shape.width() - 1 {
+                    if x == part.width() - 1 {
                         end_x = x;
                     }
 
                     tested[current_index] = true;
                 }
 
-                'height: for y in start_y + 1..shape.height() {
+                'height: for y in start_y + 1..part.height() {
                     for x in start_x..end_x + 1 {
-                        let current_index = shape.pos_to_index(x, y, start_z);
-                        let test_material = shape.get_index(current_index);
+                        let current_index = part.pos_to_index(x, y, start_z);
+                        let test_material = part.get_index(current_index);
 
                         if test_material != material || tested[current_index] {
                             end_y = y - 1;
@@ -77,19 +77,19 @@ pub fn generate_collider_data(
                     }
 
                     for x in start_x..end_x + 1 {
-                        tested[shape.pos_to_index(x, y, start_z)] = true;
+                        tested[part.pos_to_index(x, y, start_z)] = true;
                     }
 
-                    if y == shape.height() - 1 {
+                    if y == part.height() - 1 {
                         end_y = y;
                     }
                 }
 
-                'depth: for z in start_z + 1..shape.depth() {
+                'depth: for z in start_z + 1..part.depth() {
                     for y in start_y..end_y + 1 {
                         for x in start_x..end_x + 1 {
-                            let current_index = shape.pos_to_index(x, y, z);
-                            let test_material = shape.get_index(current_index);
+                            let current_index = part.pos_to_index(x, y, z);
+                            let test_material = part.get_index(current_index);
                             if test_material != material || tested[current_index] {
                                 end_z = z - 1;
                                 break 'depth;
@@ -99,11 +99,11 @@ pub fn generate_collider_data(
 
                     for y in start_y..end_y + 1 {
                         for x in start_x..end_x + 1 {
-                            tested[shape.pos_to_index(x, y, z)] = true;
+                            tested[part.pos_to_index(x, y, z)] = true;
                         }
                     }
 
-                    if z == shape.depth() - 1 {
+                    if z == part.depth() - 1 {
                         end_z = z;
                     }
                 }
@@ -113,13 +113,13 @@ pub fn generate_collider_data(
                 let hz = (end_z + 1 - start_z) as f32 / 2.0 * VOXEL_SIZE;
 
                 let collider = Collider::cuboid(hx, hy, hz);
-                let shape_corner = shape_transform.translation - shape.center();
-                let collider_corner = shape_corner + Vec3::new(start_x as f32, start_y as f32, start_z as f32) * VOXEL_SIZE;
+                let part_corner = part_transform.translation - part.center();
+                let collider_corner = part_corner + Vec3::new(start_x as f32, start_y as f32, start_z as f32) * VOXEL_SIZE;
                 let collider_translation = collider_corner + Vec3::new(hx, hy, hz);
 
                 let transform = Transform {
                     translation: collider_translation,
-                    rotation: shape_transform.rotation,
+                    rotation: part_transform.rotation,
                     scale: Vec3::splat(1.0)
                 };
 
@@ -134,14 +134,14 @@ pub fn generate_collider_data(
 pub struct RegenerateColliders(pub Entity);
 
 pub fn remove_unused_colliders(
-    removed_shapes: RemovedComponents<ShapeHandle>,
-    collider_query: Query<(Entity, &ShapeCollider)>,
+    removed_parts: RemovedComponents<PartHandle>,
+    collider_query: Query<(Entity, &PartCollider)>,
     parent_query: Query<&Parent>,
     mut commands: Commands
 ) {
-    for entity in removed_shapes.iter() {
-        for (collider, shape_collider) in collider_query.iter() {
-            if shape_collider.shape == entity {
+    for entity in removed_parts.iter() {
+        for (collider, part_collider) in collider_query.iter() {
+            if part_collider.part == entity {
                 if let Ok(parent) = parent_query.get(collider) {
                     commands.entity(parent.get()).remove_children(&[collider]);
                 }

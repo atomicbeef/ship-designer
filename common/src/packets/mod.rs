@@ -16,8 +16,8 @@ pub trait PacketDeserialize: Sized {
 #[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum PacketType {
-    PlaceShape,
-    DeleteShape,
+    PlacePart,
+    DeletePart,
     InitialState,
     PlayerConnected,
     PlayerDisconnected,

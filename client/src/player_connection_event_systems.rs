@@ -3,10 +3,10 @@ use bevy_rapier3d::prelude::*;
 
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::player::{Player, Players};
-use common::shape::{Shapes, ShapeNetworkRepr, ShapeId};
+use common::part::{Parts, PartNetworkRepr, PartId};
 use common::ship::Ship;
 
-use crate::building::spawn_shape;
+use crate::building::spawn_part;
 use crate::building_material::BuildingMaterial;
 use crate::meshes::MeshHandles;
 
@@ -40,7 +40,7 @@ pub fn initial_state_setup(
     mut materials: ResMut<Assets<BuildingMaterial>>,
     mut players: ResMut<Players>,
     mut initial_state_reader: EventReader<InitialState>,
-    mut shapes: ResMut<Shapes>
+    mut parts: ResMut<Parts>
 ) {
     for initial_state in initial_state_reader.iter() {
         for player in initial_state.players.iter() {
@@ -56,23 +56,23 @@ pub fn initial_state_setup(
             .insert(Ship)
             .id();
 
-        for (shape_network_repr, transform, network_id) in initial_state.shapes.iter() {
-            let shape_handle = match shape_network_repr {
-                ShapeNetworkRepr::Predefined(shape_id) => {
-                    shapes.get_handle(ShapeId::from(*shape_id))
+        for (part_network_repr, transform, network_id) in initial_state.parts.iter() {
+            let part_handle = match part_network_repr {
+                PartNetworkRepr::Predefined(part_id) => {
+                    parts.get_handle(PartId::from(*part_id))
                 },
-                ShapeNetworkRepr::Child(shape) => {
-                    shapes.add(shape.clone())
+                PartNetworkRepr::Child(part) => {
+                    parts.add(part.clone())
                 }
             };
 
-            spawn_shape(
+            spawn_part(
                 &mut commands,
                 &mut mesh_handles,
                 &mut meshes,
                 &mut materials,
-                &shapes,
-                shape_handle,
+                &parts,
+                part_handle,
                 Transform::from(*transform),
                 *network_id,
                 body

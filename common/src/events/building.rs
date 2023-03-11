@@ -1,69 +1,69 @@
 use crate::network_id::NetworkId;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
-use crate::shape::ShapeId;
+use crate::part::PartId;
 use crate::compact_transform::CompactTransform;
 
 #[derive(Debug)]
-pub struct PlaceShapeRequest {
-    pub shape_id: ShapeId,
-    pub shape_transform: CompactTransform,
+pub struct PlacePartRequest {
+    pub part_id: PartId,
+    pub part_transform: CompactTransform,
     pub body_network_id: NetworkId
 }
 
-impl TryFrom<Packet> for PlaceShapeRequest {
+impl TryFrom<Packet> for PlacePartRequest {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
-        let shape_id = ShapeId::deserialize(&mut packet)?;
-        let shape_transform = CompactTransform::deserialize(&mut packet)?;
+        let part_id = PartId::deserialize(&mut packet)?;
+        let part_transform = CompactTransform::deserialize(&mut packet)?;
         let body_network_id = NetworkId::deserialize(&mut packet)?;
-        Ok(Self { shape_id, shape_transform, body_network_id })
+        Ok(Self { part_id, part_transform, body_network_id })
     }
 }
 
-impl From<&PlaceShapeRequest> for Packet {
-    fn from(place_shape_request: &PlaceShapeRequest) -> Self {
-        let mut packet = Packet::new(PacketType::PlaceShape);
-        place_shape_request.shape_id.serialize(&mut packet);
-        place_shape_request.shape_transform.serialize(&mut packet);
-        place_shape_request.body_network_id.serialize(&mut packet);
+impl From<&PlacePartRequest> for Packet {
+    fn from(place_part_request: &PlacePartRequest) -> Self {
+        let mut packet = Packet::new(PacketType::PlacePart);
+        place_part_request.part_id.serialize(&mut packet);
+        place_part_request.part_transform.serialize(&mut packet);
+        place_part_request.body_network_id.serialize(&mut packet);
         packet
     }
 }
 
-pub struct PlaceShapeCommand {
-    pub shape_id: ShapeId,
+pub struct PlacePartCommand {
+    pub part_id: PartId,
     pub transform: CompactTransform,
-    pub shape_network_id: NetworkId,
+    pub part_network_id: NetworkId,
     pub body_network_id: NetworkId
 }
 
-impl TryFrom<Packet> for PlaceShapeCommand {
+impl TryFrom<Packet> for PlacePartCommand {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
-        let shape_id = ShapeId::deserialize(&mut packet)?;
+        let part_id = PartId::deserialize(&mut packet)?;
         let transform = CompactTransform::deserialize(&mut packet)?;
-        let shape_network_id = NetworkId::deserialize(&mut packet)?;
+        let part_network_id = NetworkId::deserialize(&mut packet)?;
         let body_network_id = NetworkId::deserialize(&mut packet)?;
-        Ok(Self { shape_id, transform, shape_network_id, body_network_id })
+        Ok(Self { part_id, transform, part_network_id, body_network_id })
     }
 }
 
-impl From<&PlaceShapeCommand> for Packet {
-    fn from(place_shape_command: &PlaceShapeCommand) -> Self {
-        let mut packet = Packet::new(PacketType::PlaceShape);
-        place_shape_command.shape_id.serialize(&mut packet);
-        place_shape_command.transform.serialize(&mut packet);
-        place_shape_command.shape_network_id.serialize(&mut packet);
-        place_shape_command.body_network_id.serialize(&mut packet);
+impl From<&PlacePartCommand> for Packet {
+    fn from(place_part_command: &PlacePartCommand) -> Self {
+        let mut packet = Packet::new(PacketType::PlacePart);
+        place_part_command.part_id.serialize(&mut packet);
+        place_part_command.transform.serialize(&mut packet);
+        place_part_command.part_network_id.serialize(&mut packet);
+        place_part_command.body_network_id.serialize(&mut packet);
         packet
     }
 }
 
-pub struct DeleteShapeRequest(pub NetworkId);
+pub struct DeletePartRequest(pub NetworkId);
 
-impl TryFrom<Packet> for DeleteShapeRequest {
+impl TryFrom<Packet> for DeletePartRequest {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
@@ -72,17 +72,17 @@ impl TryFrom<Packet> for DeleteShapeRequest {
     }
 }
 
-impl From<&DeleteShapeRequest> for Packet {
-    fn from(delete_block_request: &DeleteShapeRequest) -> Self {
-        let mut packet = Packet::new(PacketType::DeleteShape);
+impl From<&DeletePartRequest> for Packet {
+    fn from(delete_block_request: &DeletePartRequest) -> Self {
+        let mut packet = Packet::new(PacketType::DeletePart);
         delete_block_request.0.serialize(&mut packet);
         packet
     }
 }
 
-pub struct DeleteShapeCommand(pub NetworkId);
+pub struct DeletePartCommand(pub NetworkId);
 
-impl TryFrom<Packet> for DeleteShapeCommand {
+impl TryFrom<Packet> for DeletePartCommand {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
@@ -91,10 +91,10 @@ impl TryFrom<Packet> for DeleteShapeCommand {
     }
 }
 
-impl From<&DeleteShapeCommand> for Packet {
-    fn from(delete_shape_command: &DeleteShapeCommand) -> Self {
-        let mut packet = Packet::new(PacketType::DeleteShape);
-        delete_shape_command.0.serialize(&mut packet);
+impl From<&DeletePartCommand> for Packet {
+    fn from(delete_part_command: &DeletePartCommand) -> Self {
+        let mut packet = Packet::new(PacketType::DeletePart);
+        delete_part_command.0.serialize(&mut packet);
         packet
     }
 }

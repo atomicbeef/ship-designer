@@ -20,13 +20,13 @@ mod packet_handling;
 mod player_connection_event_systems;
 mod server_state;
 
-use building_systems::{send_place_shape_commands, send_delete_shape_commands, spawn_shape, regenerate_colliders};
-use common::events::building::{PlaceShapeRequest, PlaceShapeCommand, DeleteShapeRequest, DeleteShapeCommand};
+use building_systems::{send_place_part_commands, send_delete_part_commands, spawn_part, regenerate_colliders};
+use common::events::building::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
-use common::shape::{Shapes, ShapeId, free_shapes, FreedShapes};
-use common::predefined_shapes::add_hardcoded_shapes;
+use common::part::{Parts, PartId, free_parts, FreedParts};
+use common::predefined_parts::add_hardcoded_parts;
 
-use building_systems::{confirm_place_shape_requests, confirm_delete_shape_requests};
+use building_systems::{confirm_place_part_requests, confirm_delete_part_requests};
 use packet_handling::process_packets;
 use server_state::ServerState;
 use network_id_generator::NetworkIdGenerator;
@@ -53,15 +53,15 @@ fn main() {
         .add_plugin(MeshPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .insert_resource(NetworkIdGenerator::new())
-        .insert_resource(Shapes::new())
+        .insert_resource(Parts::new())
         .insert_resource(Players::new())
         .insert_resource(Index::<NetworkId>::new())
         .add_event::<RegenerateColliders>()
-        .add_event::<FreedShapes>()
-        .add_event::<PlaceShapeRequest>()
-        .add_event::<PlaceShapeCommand>()
-        .add_event::<DeleteShapeRequest>()
-        .add_event::<DeleteShapeCommand>()
+        .add_event::<FreedParts>()
+        .add_event::<PlacePartRequest>()
+        .add_event::<PlacePartCommand>()
+        .add_event::<DeletePartRequest>()
+        .add_event::<DeletePartCommand>()
         .add_event::<PlayerConnected>()
         .add_event::<PlayerDisconnected>()
         .add_stage_before(
@@ -72,11 +72,11 @@ fn main() {
         )
         .add_startup_system(setup_server)
         .add_startup_system(setup)
-        .add_system(free_shapes)
-        .add_system(confirm_place_shape_requests)
-        .add_system(confirm_delete_shape_requests)
-        .add_system(send_place_shape_commands)
-        .add_system(send_delete_shape_commands)
+        .add_system(free_parts)
+        .add_system(confirm_place_part_requests)
+        .add_system(confirm_delete_part_requests)
+        .add_system(send_place_part_commands)
+        .add_system(send_delete_part_commands)
         .add_system(send_player_connected)
         .add_system(send_player_disconnected)
         .add_system(remove_unused_colliders)
@@ -108,9 +108,9 @@ fn setup_server(world: &mut World) {
 fn setup(
     mut commands: Commands,
     mut network_id_generator: ResMut<NetworkIdGenerator>,
-    mut shapes: ResMut<Shapes>
+    mut parts: ResMut<Parts>
 ) {
-    add_hardcoded_shapes(&mut shapes);
+    add_hardcoded_parts(&mut parts);
 
     let body = commands.spawn(RigidBody::Dynamic)
         .insert(VisibilityBundle::default())
@@ -127,12 +127,12 @@ fn setup(
         .insert(Ship)
         .id();
     
-    let shape_handle = shapes.get_handle(ShapeId::from(0));
+    let part_handle = parts.get_handle(PartId::from(0));
 
-    spawn_shape(
+    spawn_part(
         &mut commands,
-        &mut shapes,
-        shape_handle,
+        &mut parts,
+        part_handle,
         Transform::from_xyz(0.0, 0.0, 0.0),
         network_id_generator.generate(),
         body

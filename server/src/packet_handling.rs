@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use uflow::server::Event::*;
 use uflow::server::ErrorType;
 
-use common::events::building::{PlaceShapeRequest, DeleteShapeRequest};
+use common::events::building::{PlacePartRequest, DeletePartRequest};
 use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
 use common::packets::{Packet, PacketType};
 use common::player::Players;
@@ -12,8 +12,8 @@ use crate::server_state::ServerState;
 pub fn process_packets(
     mut state: NonSendMut<ServerState>,
     mut players: ResMut<Players>,
-    mut place_block_request_writer: EventWriter<PlaceShapeRequest>,
-    mut delete_block_request_writer: EventWriter<DeleteShapeRequest>,
+    mut place_block_request_writer: EventWriter<PlacePartRequest>,
+    mut delete_block_request_writer: EventWriter<DeletePartRequest>,
     mut client_connected_writer: EventWriter<PlayerConnected>,
     mut client_disconnected_writer: EventWriter<PlayerDisconnected>,
 ) {
@@ -88,12 +88,12 @@ pub fn process_packets(
 
 fn generate_events(
     packet: Packet,
-    place_block_writer: &mut EventWriter<PlaceShapeRequest>,
-    delete_block_writer: &mut EventWriter<DeleteShapeRequest>,
+    place_block_writer: &mut EventWriter<PlacePartRequest>,
+    delete_block_writer: &mut EventWriter<DeletePartRequest>,
 ) {
     match packet.packet_type() {
-        PacketType::PlaceShape => {
-            match PlaceShapeRequest::try_from(packet) {
+        PacketType::PlacePart => {
+            match PlacePartRequest::try_from(packet) {
                 Ok(place_block_request) => {
                     place_block_writer.send(place_block_request);
                 },
@@ -102,8 +102,8 @@ fn generate_events(
                 }
             }
         },
-        PacketType::DeleteShape => {
-            match DeleteShapeRequest::try_from(packet) {
+        PacketType::DeletePart => {
+            match DeletePartRequest::try_from(packet) {
                 Ok(delete_block_request) => {
                     delete_block_writer.send(delete_block_request);
                 },
