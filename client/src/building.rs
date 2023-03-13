@@ -3,7 +3,6 @@ use core::f32::consts::PI;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use common::colliders::{generate_collider_data, PartCollider, RegenerateColliders};
-use common::reparent_global_transform::ReparentGlobalTransform;
 use uflow::SendMode;
 use bevy_rapier3d::prelude::*;
 

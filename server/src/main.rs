@@ -11,7 +11,6 @@ use common::index::{update_index, Index};
 use common::network_id::NetworkId;
 use common::player::Players;
 use common::ship::Ship;
-use iyes_loopless::prelude::*;
 use bevy_rapier3d::prelude::*;
 
 mod building_systems;
@@ -32,13 +31,7 @@ use server_state::ServerState;
 use network_id_generator::NetworkIdGenerator;
 use player_connection_event_systems::{send_player_connected, send_player_disconnected};
 
-#[derive(StageLabel)]
-struct NetworkStage;
-
 fn main() {
-    let mut packet_process_stage = SystemStage::parallel();
-    packet_process_stage.add_system(process_packets);
-
     App::new()
         .add_plugins(MinimalPlugins)
         .add_plugin(LogPlugin {
@@ -49,9 +42,10 @@ fn main() {
         .add_plugin(HierarchyPlugin)
         .add_plugin(DiagnosticsPlugin)
         .add_plugin(AssetPlugin::default())
-        .add_plugin(ScenePlugin)
         .add_plugin(MeshPlugin)
+        .add_plugin(ScenePlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .insert_resource(FixedTime::new(Duration::from_millis(16)))
         .insert_resource(NetworkIdGenerator::new())
         .insert_resource(Parts::new())
         .insert_resource(Players::new())
@@ -64,14 +58,9 @@ fn main() {
         .add_event::<DeletePartCommand>()
         .add_event::<PlayerConnected>()
         .add_event::<PlayerDisconnected>()
-        .add_stage_before(
-            CoreStage::Update,
-            NetworkStage,
-            FixedTimestepStage::new(Duration::from_millis(16), "network_stage")
-                .with_stage(packet_process_stage)
-        )
         .add_startup_system(setup_server)
         .add_startup_system(setup)
+        .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))
         .add_system(free_parts)
         .add_system(confirm_place_part_requests)
         .add_system(confirm_delete_part_requests)
@@ -81,7 +70,7 @@ fn main() {
         .add_system(send_player_disconnected)
         .add_system(remove_unused_colliders)
         .add_system(regenerate_colliders)
-        .add_system_to_stage(CoreStage::PostUpdate, update_index::<NetworkId>)
+        .add_system(update_index::<NetworkId>.in_base_set(CoreSet::PostUpdate))
         .run();
 }
 

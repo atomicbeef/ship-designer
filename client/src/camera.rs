@@ -1,7 +1,7 @@
 use bevy::ecs::event::EventReader;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
-use bevy::window::CursorGrabMode;
+use bevy::window::{CursorGrabMode, PrimaryWindow};
 
 use crate::settings::Settings;
 
@@ -44,16 +44,16 @@ fn camera_move(
 
 fn camera_rotate(
     mut motion_evr: EventReader<MouseMotion>,
-    windows: Res<Windows>,
+    primary_window_query: Query<&Window, With<PrimaryWindow>>,
     mut state: ResMut<Orientation>,
     settings: Res<Settings>,
     mut query: Query<&mut Transform, With<FreeCamera>>
 ) {
-    let primary_window = windows.get_primary();
-    if let Some(window) = primary_window {
+    let primary_window = primary_window_query.get_single();
+    if let Ok(window) = primary_window {
         for mut transform in query.iter_mut() {
             for ev in motion_evr.iter() {
-                match window.cursor_grab_mode() {
+                match window.cursor.grab_mode {
                     CursorGrabMode::None => {},
                     CursorGrabMode::Confined | CursorGrabMode::Locked => {
                         state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window.height()).to_radians();
@@ -69,23 +69,23 @@ fn camera_rotate(
 
 fn cursor_grab(
     mouse_button_input: Res<Input<MouseButton>>,
-    mut windows: ResMut<Windows>
+    mut primary_window_query: Query<&mut Window, With<PrimaryWindow>>,
 ) {
-    let primary_window = windows.get_primary_mut();
-    if let Some(window) = primary_window {
+    let primary_window = primary_window_query.get_single_mut();
+    if let Ok(mut window) = primary_window {
         // Lock and hide the cursor if RMB is pressed
         let rmb_pressed = mouse_button_input.pressed(MouseButton::Right);
-        let cursor_locked = match window.cursor_grab_mode() {
+        let cursor_locked = match window.cursor.grab_mode {
             CursorGrabMode::None => false,
             CursorGrabMode::Confined | CursorGrabMode::Locked => true
         };
         
         if rmb_pressed && !cursor_locked {
-            window.set_cursor_grab_mode(CursorGrabMode::Confined);
-            window.set_cursor_visibility(false);
+            window.cursor.grab_mode = CursorGrabMode::Confined;
+            window.cursor.visible = false;
         } else if !rmb_pressed && cursor_locked {
-            window.set_cursor_grab_mode(CursorGrabMode::None);
-            window.set_cursor_visibility(true);
+            window.cursor.grab_mode = CursorGrabMode::None;
+            window.cursor.visible = true;
         }
     }
 }

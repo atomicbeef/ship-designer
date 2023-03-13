@@ -127,7 +127,7 @@ pub fn confirm_place_part_requests(
             });
 
             // Update colliders in Rapier
-            SystemStage::single(init_colliders).run(world);
+            Schedule::new().add_system(init_colliders).run(world);
             world.resource_scope(|_, mut rapier_context: Mut<RapierContext>| {
                 rapier_context.update_query_pipeline();
             });

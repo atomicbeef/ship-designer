@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_rapier3d::prelude::*;
 
 #[derive(Component)]
@@ -20,14 +20,14 @@ impl SelectionSource {
 pub struct Selectable;
 
 pub fn update_intersections(
-    windows: Res<Windows>,
+    primary_window_query: Query<&Window, With<PrimaryWindow>>,
     mut camera_query: Query<(&Camera, &GlobalTransform, &mut SelectionSource)>,
     rapier_context: Res<RapierContext>,
     selectable_query: Query<&Selectable>
 ) {
-    let window = match windows.get_primary() {
-        Some(window) => window,
-        None => { return; }
+    let window = match primary_window_query.get_single() {
+        Ok(window) => window,
+        Err(_) => { return; }
     };
     let cursor_position = match window.cursor_position() {
         Some(pos) => pos,

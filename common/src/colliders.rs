@@ -139,7 +139,7 @@ pub fn generate_collider_data(
 pub struct RegenerateColliders(pub Entity);
 
 pub fn remove_unused_colliders(
-    removed_parts: RemovedComponents<PartHandle>,
+    mut removed_parts: RemovedComponents<PartHandle>,
     collider_query: Query<(Entity, &PartCollider)>,
     parent_query: Query<&Parent>,
     mut commands: Commands

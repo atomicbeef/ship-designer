@@ -7,15 +7,14 @@ edition = "2021"
 
 [dependencies]
 common = { package = "ship-designer-common", path = "../common" }
-bevy_egui = "0.17"
-bevy-inspector-egui = "0.17"
+bevy_egui = "0.20"
+bevy-inspector-egui = "0.18"
 uflow = "0.7"
-iyes_loopless = "0.9"
 num_enum = "0.5"
-bevy_rapier3d = { version = "0.20", features = [ "debug-render-3d", "simd-stable" ] }
+bevy_rapier3d = { version = "0.21", features = [ "debug-render-3d", "simd-stable" ] }
 
 [dependencies.bevy]
-version = "0.9"
+version = "0.10"
 default-features = false
 features = [
     "animation",

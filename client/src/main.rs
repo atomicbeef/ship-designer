@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
-use bevy::window::WindowClosed;
+use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use building_material::BuildingMaterial;
@@ -11,7 +11,6 @@ use common::events::part::UpdateVoxels;
 use common::index::{update_index, Index};
 use common::network_id::NetworkId;
 use common::player::Players;
-use iyes_loopless::prelude::*;
 use mesh_generation::{RegeneratePartMesh, regenerate_part_mesh, get_mesh_or_generate};
 use raycast_selection::{update_intersections, SelectionSource};
 use part::update_voxels;
@@ -42,9 +41,6 @@ use meshes::{MeshHandles, free_mesh_handles};
 use packet_handling::process_packets;
 use player_connection_event_systems::{player_connected, player_disconnected, initial_state_setup};
 
-#[derive(StageLabel)]
-struct NetworkStage;
-
 fn main() {
     let server_address = "127.0.0.1:36756";
     let client_config = uflow::client::Config {
@@ -58,11 +54,8 @@ fn main() {
 
     let connection_state = ConnectionState::new(client);
 
-    let mut packet_process_stage = SystemStage::parallel();
-    packet_process_stage.add_system(process_packets);
-
     App::new()
-        .insert_resource(Msaa { samples: 4 })
+        .insert_resource(Msaa::default())
         .insert_resource(settings::Settings::default())
         .add_plugins(
             DefaultPlugins.set(LogPlugin {
@@ -70,7 +63,7 @@ fn main() {
                 filter: "wgpu=error,naga=error".to_string()
             })
             .set(WindowPlugin {
-                exit_on_all_closed: false,
+                //exit_condition: bevy::window::ExitCondition::OnAllClosed,
                 ..default()
             })
         )
@@ -79,21 +72,16 @@ fn main() {
         .add_startup_system(setup)
         .add_system(disconnect_on_esc)
         .add_system(disconnect_on_window_close)
-        .add_plugin(WorldInspectorPlugin)
+        .add_plugin(WorldInspectorPlugin::new())
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(MaterialPlugin::<BuildingMaterial>::default())
+        .insert_resource(FixedTime::new(Duration::from_millis(16)))
         .insert_resource(connection_state)
         .insert_resource(Players::new())
         .insert_resource(Parts::new())
         .insert_resource(MeshHandles::new())
         .insert_resource(Index::<NetworkId>::new())
-        .add_stage_before(
-            CoreStage::Update,
-            NetworkStage,
-            FixedTimestepStage::new(Duration::from_millis(16), "network_stage")
-                .with_stage(packet_process_stage)
-        )
         .add_event::<PlacePartRequest>()
         .add_event::<PlacePartCommand>()
         .add_event::<DeletePartRequest>()
@@ -105,7 +93,8 @@ fn main() {
         .add_event::<RegenerateColliders>()
         .add_event::<FreedParts>()
         .add_event::<UpdateVoxels>()
-        .add_system_to_stage(CoreStage::First, update_intersections)
+        .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))
+        .add_system(update_intersections.in_base_set(CoreSet::First))
         .add_system(move_build_marker)
         .add_system(rotate_build_marker)
         .add_system(build_request_events)
@@ -120,18 +109,18 @@ fn main() {
         .add_system(free_mesh_handles)
         .add_system(player_connected)
         .add_system(player_disconnected)
-        .add_system(initial_state_setup.run_on_event::<InitialState>())
+        .add_system(initial_state_setup.run_if(on_event::<InitialState>()))
         .add_system(remove_unused_colliders)
-        .add_system_to_stage(CoreStage::PostUpdate, update_index::<NetworkId>)
+        .add_system(update_index::<NetworkId>.in_base_set(CoreSet::PostUpdate))
         .register_type::<common::part::PartId>()
         .register_type::<common::part::PartHandle>()
         .run();
 }
 
-fn set_window_title(mut windows: ResMut<Windows>) {
-    let window = windows.get_primary_mut().unwrap();
+fn set_window_title(mut primary_window_query: Query<&mut Window, With<PrimaryWindow>>,) {
+    let mut window = primary_window_query.single_mut();
 
-    window.set_title("Ship Designer".to_string());
+    window.title = "Ship Designer".to_string();
 }
 
 fn setup(

@@ -10,4 +10,3 @@ pub mod predefined_parts;
 pub mod part;
 pub mod compact_transform;
 pub mod ship;
-pub mod reparent_global_transform;

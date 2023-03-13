@@ -36,7 +36,7 @@ impl<T: Copy + Eq + Hash> Index<T> {
 pub fn update_index<T: Copy + Eq + Hash + Send + Sync + Component>(
     mut index: ResMut<Index<T>>,
     added_query: Query<(Entity, &T), Added<T>>,
-    removed_query: RemovedComponents<T>
+    mut removed_query: RemovedComponents<T>
 ) {
     for (entity, value) in added_query.iter() {
         index.insert(*value, entity);
