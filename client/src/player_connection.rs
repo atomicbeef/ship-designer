@@ -1,16 +1,16 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
-use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
+use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::player::{Player, Players};
 use common::part::{Parts, PartNetworkRepr, PartId};
 use common::ship::Ship;
 
-use crate::building::spawn_part;
+use crate::part::spawn_part;
 use crate::building_material::BuildingMaterial;
-use crate::meshes::MeshHandles;
+use crate::part::meshes::PartMeshHandles;
 
-pub fn player_connected(
+fn player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
     mut players: ResMut<Players>
 ) {
@@ -21,7 +21,7 @@ pub fn player_connected(
     }
 }
 
-pub fn player_disconnected(
+fn player_disconnected(
     mut player_disconnected_reader: EventReader<PlayerDisconnected>,
     mut players: ResMut<Players>
 ) {
@@ -33,9 +33,9 @@ pub fn player_disconnected(
     }
 }
 
-pub fn initial_state_setup(
+fn initial_state_setup(
     mut commands: Commands,
-    mut mesh_handles: ResMut<MeshHandles>,
+    mut mesh_handles: ResMut<PartMeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<BuildingMaterial>>,
     mut players: ResMut<Players>,
@@ -78,5 +78,17 @@ pub fn initial_state_setup(
                 construct
             );
         }
+    }
+}
+
+pub struct PlayerConnectionPlugin;
+impl Plugin for PlayerConnectionPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<PlayerConnected>()
+            .add_event::<PlayerDisconnected>()
+            .add_event::<InitialState>()
+            .add_system(player_connected)
+            .add_system(player_disconnected)
+            .add_system(initial_state_setup.run_if(on_event::<InitialState>()));
     }
 }

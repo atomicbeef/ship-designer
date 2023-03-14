@@ -1,4 +1,5 @@
 use std::hash::Hash;
+use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -33,7 +34,7 @@ impl<T: Copy + Eq + Hash> Index<T> {
     }
 }
 
-pub fn update_index<T: Copy + Eq + Hash + Send + Sync + Component>(
+fn update_index<T: Copy + Eq + Hash + Send + Sync + Component>(
     mut index: ResMut<Index<T>>,
     added_query: Query<(Entity, &T), Added<T>>,
     mut removed_query: RemovedComponents<T>
@@ -44,5 +45,20 @@ pub fn update_index<T: Copy + Eq + Hash + Send + Sync + Component>(
 
     for entity in removed_query.iter() {
         index.remove(entity);
+    }
+}
+
+pub struct IndexPlugin<T: Send + Sync + Clone + Copy + PartialEq + Eq + Hash + Component + 'static>(PhantomData<T>);
+
+impl<T: Send + Sync + Clone + Copy + PartialEq + Eq + Hash + Component + 'static> IndexPlugin<T> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<T: Send + Sync + Clone + Copy + PartialEq + Eq + Hash + Component + 'static> Plugin for IndexPlugin<T> {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(Index::<T>::new())
+            .add_system(update_index::<T>.in_base_set(CoreSet::PostUpdate));
     }
 }

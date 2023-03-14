@@ -2,13 +2,13 @@ use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::prelude::systems::init_colliders;
-use common::colliders::{PartCollider, RegenerateColliders};
+use common::part::colliders::{PartCollider, RegenerateColliders};
 use common::player::Players;
 use uflow::SendMode;
 
-use common::colliders::{ColliderData, generate_collider_data};
+use common::part::colliders::{ColliderData, generate_collider_data};
 use common::channels::Channel;
-use common::events::building::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
+use common::part::events::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
 use common::index::Index;
 use common::network_id::NetworkId;
 use common::packets::Packet;
@@ -72,7 +72,7 @@ pub fn spawn_part_exclusive(
     part_entity
 }
 
-pub fn confirm_place_part_requests(
+fn confirm_place_part_requests(
     world: &mut World,
 ) {
     let place_part_requests: Vec<PlacePartRequest> = world.get_resource_mut::<Events<PlacePartRequest>>()
@@ -135,7 +135,7 @@ pub fn confirm_place_part_requests(
     }
 }
 
-pub fn confirm_delete_part_requests(
+fn confirm_delete_part_requests(
     mut commands: Commands,
     mut delete_part_request_reader: EventReader<DeletePartRequest>,
     mut send_delete_part_writer: EventWriter<DeletePartCommand>,
@@ -169,7 +169,7 @@ pub fn confirm_delete_part_requests(
     }
 }
 
-pub fn send_place_part_commands(
+fn send_place_part_commands(
     mut server_state: NonSendMut<ServerState>,
     players: Res<Players>,
     mut send_place_part_reader: EventReader<PlacePartCommand>
@@ -188,7 +188,7 @@ pub fn send_place_part_commands(
     }
 }
 
-pub fn send_delete_part_commands(
+fn send_delete_part_commands(
     mut server_state: NonSendMut<ServerState>,
     players: Res<Players>,
     mut send_delete_part_reader: EventReader<DeletePartCommand>
@@ -207,7 +207,7 @@ pub fn send_delete_part_commands(
     }
 }
 
-pub fn regenerate_colliders(
+fn regenerate_colliders(
     mut commands: Commands,
     mut regenerate_colliders_reader: EventReader<RegenerateColliders>,
     parent_query: Query<&Parent, With<PartHandle>>,
@@ -243,5 +243,16 @@ pub fn regenerate_colliders(
                 commands.entity(construct).add_child(collider_entity);
             }
         }
+    }
+}
+
+pub struct ServerPartPlugin;
+impl Plugin for ServerPartPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(confirm_place_part_requests)
+            .add_system(confirm_delete_part_requests)
+            .add_system(send_place_part_commands)
+            .add_system(send_delete_part_commands)
+            .add_system(regenerate_colliders);
     }
 }

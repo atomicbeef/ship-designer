@@ -6,30 +6,27 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
-use common::colliders::{remove_unused_colliders, RegenerateColliders};
-use common::index::{update_index, Index};
+use common::index::IndexPlugin;
 use common::network_id::NetworkId;
 use common::player::Players;
 use common::ship::Ship;
 use bevy_rapier3d::prelude::*;
 
-mod building_systems;
 mod network_id_generator;
 mod packet_handling;
-mod player_connection_event_systems;
+mod part;
+mod player_connection;
 mod server_state;
 
-use building_systems::{send_place_part_commands, send_delete_part_commands, spawn_part, regenerate_colliders};
-use common::events::building::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
-use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
-use common::part::{Parts, PartId, free_parts, FreedParts};
+use common::part::{Parts, PartId, PartPlugin};
 use common::predefined_parts::add_hardcoded_parts;
 
-use building_systems::{confirm_place_part_requests, confirm_delete_part_requests};
 use packet_handling::process_packets;
+use part::{ServerPartPlugin, spawn_part};
 use server_state::ServerState;
 use network_id_generator::NetworkIdGenerator;
-use player_connection_event_systems::{send_player_connected, send_player_disconnected};
+
+use crate::player_connection::PlayerConnectionPlugin;
 
 fn main() {
     App::new()
@@ -45,32 +42,16 @@ fn main() {
         .add_plugin(MeshPlugin)
         .add_plugin(ScenePlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(IndexPlugin::<NetworkId>::new())
+        .add_plugin(PartPlugin)
+        .add_plugin(ServerPartPlugin)
+        .add_plugin(PlayerConnectionPlugin)
         .insert_resource(FixedTime::new(Duration::from_millis(16)))
         .insert_resource(NetworkIdGenerator::new())
-        .insert_resource(Parts::new())
         .insert_resource(Players::new())
-        .insert_resource(Index::<NetworkId>::new())
-        .add_event::<RegenerateColliders>()
-        .add_event::<FreedParts>()
-        .add_event::<PlacePartRequest>()
-        .add_event::<PlacePartCommand>()
-        .add_event::<DeletePartRequest>()
-        .add_event::<DeletePartCommand>()
-        .add_event::<PlayerConnected>()
-        .add_event::<PlayerDisconnected>()
         .add_startup_system(setup_server)
         .add_startup_system(setup)
         .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))
-        .add_system(free_parts)
-        .add_system(confirm_place_part_requests)
-        .add_system(confirm_delete_part_requests)
-        .add_system(send_place_part_commands)
-        .add_system(send_delete_part_commands)
-        .add_system(send_player_connected)
-        .add_system(send_player_disconnected)
-        .add_system(remove_unused_colliders)
-        .add_system(regenerate_colliders)
-        .add_system(update_index::<NetworkId>.in_base_set(CoreSet::PostUpdate))
         .run();
 }
 

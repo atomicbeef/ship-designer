@@ -3,7 +3,7 @@ use common::ship::Ship;
 use uflow::SendMode;
 
 use common::channels::Channel;
-use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
+use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::network_id::NetworkId;
 use common::part::{PartHandle, Parts, PartNetworkRepr};
 use common::compact_transform::CompactTransform;
@@ -12,7 +12,7 @@ use common::player::{Player, Players};
 
 use crate::server_state::ServerState;
 
-pub fn send_player_connected(
+fn send_player_connected(
     ship_query: Query<(Entity, &NetworkId, &Transform), &Ship>,
     mut player_connected_reader: EventReader<PlayerConnected>,
     players: Res<Players>,
@@ -79,7 +79,7 @@ pub fn send_player_connected(
     }
 }
 
-pub fn send_player_disconnected(
+fn send_player_disconnected(
     mut player_disconnected_reader: EventReader<PlayerDisconnected>,
     players: Res<Players>,
     mut server_state: NonSendMut<ServerState>
@@ -95,5 +95,15 @@ pub fn send_player_disconnected(
                 SendMode::Reliable
             );
         }
+    }
+}
+
+pub struct PlayerConnectionPlugin;
+impl Plugin for PlayerConnectionPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<PlayerConnected>()
+            .add_event::<PlayerDisconnected>()
+            .add_system(send_player_connected)
+            .add_system(send_player_disconnected);
     }
 }

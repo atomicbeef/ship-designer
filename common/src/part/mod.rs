@@ -9,6 +9,12 @@ use crossbeam_channel::{Sender, Receiver};
 use crate::materials::Material;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
+use events::*;
+use colliders::{RegenerateColliders, remove_unused_colliders};
+
+pub mod colliders;
+pub mod events;
+
 // Voxels are 10^3 cm^3
 pub const VOXEL_SIZE: f32 = 0.1;
 
@@ -324,4 +330,19 @@ pub fn free_parts(mut parts: ResMut<Parts>, mut freed_parts_writer: EventWriter<
     }
 
     freed_parts_writer.send(FreedParts(unused_part_ids));
+}
+
+pub struct PartPlugin;
+impl Plugin for PartPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(Parts::new())
+            .add_event::<PlacePartRequest>()
+            .add_event::<PlacePartCommand>()
+            .add_event::<DeletePartRequest>()
+            .add_event::<DeletePartCommand>()
+            .add_event::<FreedParts>()
+            .add_event::<RegenerateColliders>()
+            .add_system(free_parts)
+            .add_system(remove_unused_colliders);
+    }
 }

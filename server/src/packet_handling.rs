@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use uflow::server::Event::*;
 use uflow::server::ErrorType;
 
-use common::events::building::{PlacePartRequest, DeletePartRequest};
-use common::events::player_connection::{PlayerConnected, PlayerDisconnected};
+use common::part::events::{PlacePartRequest, DeletePartRequest};
+use common::player_connection::{PlayerConnected, PlayerDisconnected};
 use common::packets::{Packet, PacketType};
 use common::player::Players;
 

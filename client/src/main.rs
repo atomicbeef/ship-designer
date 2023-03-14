@@ -5,41 +5,33 @@ use bevy::prelude::*;
 use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
-use building_material::BuildingMaterial;
-use common::colliders::{remove_unused_colliders, RegenerateColliders};
-use common::events::part::UpdateVoxels;
-use common::index::{update_index, Index};
-use common::network_id::NetworkId;
-use common::player::Players;
-use mesh_generation::{RegeneratePartMesh, regenerate_part_mesh, get_mesh_or_generate};
 use raycast_selection::{update_intersections, SelectionSource};
-use part::update_voxels;
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
-use common::events::building::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
-use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
+use common::index::IndexPlugin;
+use common::network_id::NetworkId;
+use common::player::Players;
 use common::predefined_parts::add_hardcoded_parts;
-use common::part::{Parts, PartId, FreedParts, free_parts};
+use common::part::{Parts, PartId, PartPlugin};
 
 mod building;
 mod building_material;
 mod camera;
 mod connection_state;
-mod meshes;
-mod mesh_generation;
+mod part;
 mod packet_handling;
-mod player_connection_event_systems;
+mod player_connection;
 mod raycast_selection;
 mod settings;
-mod part;
 
-use building::{build_request_events, place_parts, delete_parts, send_place_part_requests, send_delete_part_requests, BuildMarker, move_build_marker, rotate_build_marker, BuildMarkerOrientation, regenerate_colliders};
+use building::{BuildMarker, BuildMarkerOrientation, BuildingPlugin};
 use camera::{FreeCameraPlugin, FreeCamera};
 use connection_state::ConnectionState;
-use meshes::{MeshHandles, free_mesh_handles};
+use part::meshes::PartMeshHandles;
 use packet_handling::process_packets;
-use player_connection_event_systems::{player_connected, player_disconnected, initial_state_setup};
+use part::ClientPartPlugin;
+use player_connection::PlayerConnectionPlugin;
 
 fn main() {
     let server_address = "127.0.0.1:36756";
@@ -68,6 +60,11 @@ fn main() {
             })
         )
         .add_plugin(FreeCameraPlugin)
+        .add_plugin(BuildingPlugin)
+        .add_plugin(PlayerConnectionPlugin)
+        .add_plugin(IndexPlugin::<NetworkId>::new())
+        .add_plugin(PartPlugin)
+        .add_plugin(ClientPartPlugin)
         .add_startup_system(set_window_title)
         .add_startup_system(setup)
         .add_system(disconnect_on_esc)
@@ -75,43 +72,11 @@ fn main() {
         .add_plugin(WorldInspectorPlugin::new())
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(MaterialPlugin::<BuildingMaterial>::default())
         .insert_resource(FixedTime::new(Duration::from_millis(16)))
         .insert_resource(connection_state)
         .insert_resource(Players::new())
-        .insert_resource(Parts::new())
-        .insert_resource(MeshHandles::new())
-        .insert_resource(Index::<NetworkId>::new())
-        .add_event::<PlacePartRequest>()
-        .add_event::<PlacePartCommand>()
-        .add_event::<DeletePartRequest>()
-        .add_event::<DeletePartCommand>()
-        .add_event::<PlayerConnected>()
-        .add_event::<PlayerDisconnected>()
-        .add_event::<InitialState>()
-        .add_event::<RegeneratePartMesh>()
-        .add_event::<RegenerateColliders>()
-        .add_event::<FreedParts>()
-        .add_event::<UpdateVoxels>()
         .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))
         .add_system(update_intersections.in_base_set(CoreSet::First))
-        .add_system(move_build_marker)
-        .add_system(rotate_build_marker)
-        .add_system(build_request_events)
-        .add_system(send_place_part_requests)
-        .add_system(send_delete_part_requests)
-        .add_system(place_parts)
-        .add_system(delete_parts)
-        .add_system(update_voxels)
-        .add_system(regenerate_part_mesh)
-        .add_system(regenerate_colliders)
-        .add_system(free_parts)
-        .add_system(free_mesh_handles)
-        .add_system(player_connected)
-        .add_system(player_disconnected)
-        .add_system(initial_state_setup.run_if(on_event::<InitialState>()))
-        .add_system(remove_unused_colliders)
-        .add_system(update_index::<NetworkId>.in_base_set(CoreSet::PostUpdate))
         .register_type::<common::part::PartId>()
         .register_type::<common::part::PartHandle>()
         .run();
@@ -125,7 +90,7 @@ fn set_window_title(mut primary_window_query: Query<&mut Window, With<PrimaryWin
 
 fn setup(
     mut parts: ResMut<Parts>,
-    mut mesh_handles: ResMut<MeshHandles>,
+    mut mesh_handles: ResMut<PartMeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands
@@ -134,7 +99,7 @@ fn setup(
 
     for part_handle in part_handles {
         let part = parts.get(&part_handle).unwrap();
-        let mesh = mesh_generation::generate_part_mesh(part);
+        let mesh = part::meshes::mesh_generation::generate_part_mesh(part);
         let mesh_handle = meshes.add(mesh);
         mesh_handles.add(part_handle.id(), mesh_handle);
     }
@@ -154,7 +119,7 @@ fn setup(
     commands.spawn(BuildMarker)
         .insert(BuildMarkerOrientation(Quat::IDENTITY))
         .insert(PbrBundle {
-            mesh: get_mesh_or_generate(marker_part_handle.id(), marker_part, &mut mesh_handles, &mut meshes),
+            mesh: part::meshes::get_mesh_or_generate(marker_part_handle.id(), marker_part, &mut mesh_handles, &mut meshes),
             material: materials.add(Color::rgba(0.25, 0.62, 0.26, 0.5).into()),
             ..Default::default()
         })

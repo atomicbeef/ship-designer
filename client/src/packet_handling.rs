@@ -1,10 +1,10 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use common::events::part::UpdateVoxels;
+use common::part::events::UpdateVoxels;
 use uflow::client::{Event::*, ErrorType};
 
-use common::events::building::{PlacePartCommand, DeletePartCommand};
-use common::events::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
+use common::part::events::{PlacePartCommand, DeletePartCommand};
+use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::packets::{Packet, PacketType};
 
 use crate::connection_state::ConnectionState;

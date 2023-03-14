@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
-use common::part::{Part, PartHandle, Parts, VOXEL_SIZE, PartId};
+use common::part::{Part, PartHandle, Parts, VOXEL_SIZE};
 use common::materials::Material;
 
-use crate::meshes::MeshHandles;
+use super::PartMeshHandles;
 
 fn add_box_mesh_data(
     min_x: f32,
@@ -134,7 +134,7 @@ pub fn regenerate_part_mesh(
     mut regenerate_part_mesh_reader: EventReader<RegeneratePartMesh>,
     part_handle_query: Query<&PartHandle>,
     parts: Res<Parts>,
-    mut mesh_handles: ResMut<MeshHandles>,
+    mut mesh_handles: ResMut<PartMeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands
 ) {
@@ -149,25 +149,6 @@ pub fn regenerate_part_mesh(
                 commands.entity(request.0).remove::<Handle<Mesh>>();
                 commands.entity(request.0).insert(mesh_handle);
             }
-        }
-    }
-}
-
-pub fn get_mesh_or_generate(
-    part_id: PartId,
-    part: &Part,
-    mesh_handles: &mut MeshHandles,
-    meshes: &mut Assets<Mesh>
-) -> Handle<Mesh> {
-    match mesh_handles.get(&part_id) {
-        Some(mesh_handle) => mesh_handle.clone(),
-        None => {
-            let mesh = generate_part_mesh(part);
-
-            let mesh_handle = meshes.add(mesh);
-            mesh_handles.add(part_id, mesh_handle.clone());
-
-            mesh_handle
         }
     }
 }
