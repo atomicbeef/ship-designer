@@ -250,9 +250,9 @@ pub struct ServerPartPlugin;
 impl Plugin for ServerPartPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(confirm_place_part_requests)
+            .add_system(send_place_part_commands.after(confirm_place_part_requests))
             .add_system(confirm_delete_part_requests)
-            .add_system(send_place_part_commands)
-            .add_system(send_delete_part_commands)
+            .add_system(send_delete_part_commands.after(confirm_delete_part_requests))
             .add_system(regenerate_colliders);
     }
 }

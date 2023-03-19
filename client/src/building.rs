@@ -213,8 +213,12 @@ pub struct BuildingPlugin;
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MaterialPlugin::<BuildingMaterial>::default())
-            .add_system(move_build_marker)
-            .add_system(rotate_build_marker)
-            .add_system(create_build_request_events);
+            .add_systems(
+                (
+                    move_build_marker,
+                    rotate_build_marker,
+                    create_build_request_events
+                ).chain()
+            );
     }
 }
