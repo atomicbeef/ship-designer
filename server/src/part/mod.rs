@@ -100,7 +100,7 @@ fn confirm_place_part_requests(
         if rapier_context.cast_shape(
             part_global_translation,
             part_global_rotation,
-            Vec3::splat(0.0001),
+            Vec3::splat(0.0),
             &Collider::cuboid(
                 part_half_extents.x,
                 part_half_extents.y,
