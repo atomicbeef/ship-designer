@@ -46,6 +46,23 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug executable 'ship-designer-client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ship-designer-client",
+                ],
+                "filter": {
+                    "name": "ship-designer-client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in executable 'ship-designer'",
             "cargo": {
                 "args": [
