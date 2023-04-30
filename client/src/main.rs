@@ -57,7 +57,7 @@ fn main() {
                 filter: "wgpu=error,naga=error".to_string()
             })
             .set(WindowPlugin {
-                //exit_condition: bevy::window::ExitCondition::OnAllClosed,
+                exit_condition: bevy::window::ExitCondition::OnAllClosed,
                 ..default()
             })
         )
