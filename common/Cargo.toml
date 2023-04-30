@@ -9,6 +9,6 @@ edition = "2021"
 bevy = { version = "0.10", default-features = false }
 bevy_rapier3d = { version = "0.21", features = [ "debug-render-3d", "simd-stable" ] }
 uflow = "0.7"
-num_enum = "0.5"
+num_enum = "0.6"
 thiserror = "1.0"
 crossbeam-channel = "0.5"
