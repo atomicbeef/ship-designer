@@ -1,4 +1,4 @@
-use crate::materials::Material;
+use crate::part::materials::Material;
 use crate::part::{Part, Parts, PartHandle};
 
 pub fn add_hardcoded_parts(parts: &mut Parts) -> Vec<PartHandle> {

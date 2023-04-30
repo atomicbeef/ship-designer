@@ -6,14 +6,15 @@ use bevy::reflect::Reflect;
 use bevy::utils::{hashbrown::hash_map, HashMap};
 use crossbeam_channel::{Sender, Receiver};
 
-use crate::materials::Material;
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
 use events::*;
 use colliders::{RegenerateColliders, remove_unused_colliders};
+use materials::Material;
 
 pub mod colliders;
 pub mod events;
+pub mod materials;
 
 // Voxels are 10^3 cm^3
 pub const VOXEL_SIZE: f32 = 0.1;
@@ -48,6 +49,31 @@ impl PacketDeserialize for PartId {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VoxelPos {
+    pub x: u8,
+    pub y: u8,
+    pub z: u8,
+}
+
+impl VoxelPos {
+    pub fn new(x: u8, y: u8, z: u8) -> Self {
+        Self { x, y, z }
+    }
+}
+
+impl From<Vec3> for VoxelPos {
+    fn from(value: Vec3) -> Self {
+        Self::new(value.x as u8, value.y as u8, value.z as u8)
+    }
+}
+
+impl From<VoxelPos> for Vec3 {
+    fn from(value: VoxelPos) -> Self {
+        Self::new(value.x as f32, value.y as f32, value.z as f32)
+    }
+}
+
 #[derive(Clone)]
 pub struct Part {
     width: u8,
@@ -62,7 +88,7 @@ impl Part {
         Self { width, height, depth, voxels, parent_part_id }
     }
 
-    pub fn pos_to_index(&self, x: u8, y: u8, z: u8) -> usize {
+    pub fn voxel_to_index(&self, x: u8, y: u8, z: u8) -> usize {
         debug_assert!(x < self.width);
         debug_assert!(y < self.height);
         debug_assert!(z < self.depth);
@@ -76,8 +102,12 @@ impl Part {
         width * height * z + y * width + x
     }
 
-    pub fn get(&self, x: u8, y: u8, z: u8) -> Material {
-        let i = self.pos_to_index(x, y, z);
+    pub fn voxel_is_in_part(&self, pos: VoxelPos) -> bool {
+        pos.x < self.width && pos.y < self.height && pos.z < self.depth
+    }
+
+    pub fn get(&self, pos: VoxelPos) -> Material {
+        let i = self.voxel_to_index(pos.x, pos.y, pos.z);
         self.voxels[i]
     }
 
@@ -85,8 +115,8 @@ impl Part {
         self.voxels[i]
     }
 
-    pub fn set(&mut self, x: u8, y: u8, z: u8, material: Material) {
-        let i = self.pos_to_index(x, y, z);
+    pub fn set(&mut self, pos: VoxelPos, material: Material) {
+        let i = self.voxel_to_index(pos.x, pos.y, pos.z);
         self.voxels[i] = material;
     }
 
@@ -135,6 +165,10 @@ impl Part {
             self.height as f32 / 2.0 * VOXEL_SIZE,
             self.depth as f32 / 2.0 * VOXEL_SIZE
         )
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.voxels.iter().all(|&material| material == Material::Empty)
     }
 }
 
@@ -333,13 +367,16 @@ pub fn free_parts(mut parts: ResMut<Parts>, mut freed_parts_writer: EventWriter<
 }
 
 pub struct PartPlugin;
+
 impl Plugin for PartPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Parts::new())
+            .insert_resource(materials::MaterialResistances::new())
             .add_event::<PlacePartRequest>()
             .add_event::<PlacePartCommand>()
             .add_event::<DeletePartRequest>()
             .add_event::<DeletePartCommand>()
+            .add_event::<VoxelUpdate>()
             .add_event::<FreedParts>()
             .add_event::<RegenerateColliders>()
             .add_system(free_parts)

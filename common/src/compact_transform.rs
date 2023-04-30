@@ -1,4 +1,4 @@
-use bevy::prelude::{Transform, Vec3, Quat};
+use bevy::prelude::{Transform, Vec3, Quat, GlobalTransform};
 
 use crate::packets::{Packet, PacketError, PacketSerialize, PacketDeserialize};
 
@@ -23,7 +23,7 @@ impl From<CompactTransform> for Transform {
         Self {
             translation: value.translation,
             rotation: value.rotation,
-            scale: Vec3::new(1.0, 1.0, 1.0)
+            scale: Vec3::splat(1.0)
         }
     }
 }
@@ -49,6 +49,17 @@ impl From<Transform> for CompactTransform {
         Self {
             translation: value.translation,
             rotation: value.rotation
+        }
+    }
+}
+
+impl From<GlobalTransform> for CompactTransform {
+    fn from(value: GlobalTransform) -> Self {
+        let (_, rotation, translation) = value.to_scale_rotation_translation();
+        
+        Self {
+            translation,
+            rotation,
         }
     }
 }

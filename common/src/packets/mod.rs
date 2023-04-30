@@ -21,7 +21,9 @@ pub enum PacketType {
     InitialState,
     PlayerConnected,
     PlayerDisconnected,
-    UpdateVoxels
+    VoxelUpdate,
+    SpawnMissile,
+    ExplodeMissile,
 }
 
 #[derive(Debug, Clone)]

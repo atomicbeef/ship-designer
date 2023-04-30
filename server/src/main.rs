@@ -6,12 +6,12 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
-use common::index::IndexPlugin;
-use common::network_id::NetworkId;
+use common::missile::MissilePlugin;
 use common::player::Players;
 use common::ship::Ship;
 use bevy_rapier3d::prelude::*;
 
+mod missile;
 mod network_id_generator;
 mod packet_handling;
 mod part;
@@ -21,6 +21,7 @@ mod server_state;
 use common::part::{Parts, PartId, PartPlugin};
 use common::predefined_parts::add_hardcoded_parts;
 
+use missile::ServerMissilePlugin;
 use packet_handling::process_packets;
 use part::{ServerPartPlugin, spawn_part};
 use server_state::ServerState;
@@ -42,10 +43,11 @@ fn main() {
         .add_plugin(MeshPlugin)
         .add_plugin(ScenePlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(IndexPlugin::<NetworkId>::new())
         .add_plugin(PartPlugin)
         .add_plugin(ServerPartPlugin)
         .add_plugin(PlayerConnectionPlugin)
+        .add_plugin(MissilePlugin)
+        .add_plugin(ServerMissilePlugin)
         .insert_resource(FixedTime::new(Duration::from_millis(16)))
         .insert_resource(NetworkIdGenerator::new())
         .insert_resource(Players::new())

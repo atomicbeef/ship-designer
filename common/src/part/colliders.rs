@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
 
-use crate::materials::Material;
+use crate::part::materials::Material;
 use crate::part::{Part, PartHandle, VOXEL_SIZE};
+
+use super::VoxelPos;
 
 #[derive(Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct PartCollider {
@@ -31,12 +33,12 @@ pub fn generate_collider_data(
     for start_z in 0..part.depth() {
         for start_y in 0..part.height() {
             for start_x in 0..part.width() {
-                let start_index = part.pos_to_index(start_x, start_y, start_z);
+                let start_index = part.voxel_to_index(start_x, start_y, start_z);
                 if tested[start_index] {
                     continue; 
                 }
 
-                let material = part.get(start_x, start_y, start_z);
+                let material = part.get(VoxelPos::new(start_x, start_y, start_z));
 
                 if matches!(material, Material::Empty) {
                     tested[start_index] = true;
@@ -50,7 +52,7 @@ pub fn generate_collider_data(
                 let mut end_z = start_z;
 
                 for x in start_x + 1..part.width() {
-                    let current_index = part.pos_to_index(x, start_y, start_z);
+                    let current_index = part.voxel_to_index(x, start_y, start_z);
                     let test_material = part.get_index(current_index);
 
                     if test_material != material || tested[current_index] {
@@ -67,7 +69,7 @@ pub fn generate_collider_data(
 
                 'height: for y in start_y + 1..part.height() {
                     for x in start_x..end_x + 1 {
-                        let current_index = part.pos_to_index(x, y, start_z);
+                        let current_index = part.voxel_to_index(x, y, start_z);
                         let test_material = part.get_index(current_index);
 
                         if test_material != material || tested[current_index] {
@@ -77,7 +79,7 @@ pub fn generate_collider_data(
                     }
 
                     for x in start_x..end_x + 1 {
-                        tested[part.pos_to_index(x, y, start_z)] = true;
+                        tested[part.voxel_to_index(x, y, start_z)] = true;
                     }
 
                     if y == part.height() - 1 {
@@ -88,7 +90,7 @@ pub fn generate_collider_data(
                 'depth: for z in start_z + 1..part.depth() {
                     for y in start_y..end_y + 1 {
                         for x in start_x..end_x + 1 {
-                            let current_index = part.pos_to_index(x, y, z);
+                            let current_index = part.voxel_to_index(x, y, z);
                             let test_material = part.get_index(current_index);
                             if test_material != material || tested[current_index] {
                                 end_z = z - 1;
@@ -99,7 +101,7 @@ pub fn generate_collider_data(
 
                     for y in start_y..end_y + 1 {
                         for x in start_x..end_x + 1 {
-                            tested[part.pos_to_index(x, y, z)] = true;
+                            tested[part.voxel_to_index(x, y, z)] = true;
                         }
                     }
 

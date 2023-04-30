@@ -1,6 +1,7 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use common::part::events::UpdateVoxels;
+use common::missile::{SpawnMissileCommand, ExplodeMissileCommand};
+use common::part::events::VoxelUpdate;
 use uflow::client::{Event::*, ErrorType};
 
 use common::part::events::{PlacePartCommand, DeletePartCommand};
@@ -17,7 +18,9 @@ pub fn process_packets(
     mut player_disconnected_writer: EventWriter<PlayerDisconnected>,
     mut app_exit_writer: EventWriter<AppExit>,
     mut initial_state_writer: EventWriter<InitialState>,
-    mut update_voxels_writer: EventWriter<UpdateVoxels>
+    mut voxel_update_writer: EventWriter<VoxelUpdate>,
+    mut spawn_missile_writer: EventWriter<SpawnMissileCommand>,
+    mut explode_missile_writer: EventWriter<ExplodeMissileCommand>,
 ) {
     for event in state.client.step() {
         match event {
@@ -38,7 +41,9 @@ pub fn process_packets(
                             &mut player_connected_writer,
                             &mut player_disconnected_writer,
                             &mut initial_state_writer,
-                            &mut update_voxels_writer
+                            &mut voxel_update_writer,
+                            &mut spawn_missile_writer,
+                            &mut explode_missile_writer,
                         );
                     },
                     Err(err) => {
@@ -77,7 +82,9 @@ fn generate_events(
     player_connected_writer: &mut EventWriter<PlayerConnected>,
     player_disconnected_writer: &mut EventWriter<PlayerDisconnected>,
     initial_state_writer: &mut EventWriter<InitialState>,
-    update_voxels_writer: &mut EventWriter<UpdateVoxels>
+    voxel_update_writer: &mut EventWriter<VoxelUpdate>,
+    spawn_missile_writer: &mut EventWriter<SpawnMissileCommand>,
+    explode_missile_writer: &mut EventWriter<ExplodeMissileCommand>,
 ) {
     match packet.packet_type() {
         PacketType::PlacePart => {
@@ -130,15 +137,35 @@ fn generate_events(
                 }
             }
         },
-        PacketType::UpdateVoxels => {
-            match UpdateVoxels::try_from(packet) {
-                Ok(update_voxels) => {
-                    update_voxels_writer.send(update_voxels);
+        PacketType::VoxelUpdate => {
+            match VoxelUpdate::try_from(packet) {
+                Ok(voxel_update) => {
+                    voxel_update_writer.send(voxel_update);
                 },
                 Err(err) => {
                     warn!(?err);
                 }
             }
-        }
+        },
+        PacketType::SpawnMissile => {
+            match SpawnMissileCommand::try_from(packet) {
+                Ok(spawn_missile) => {
+                    spawn_missile_writer.send(spawn_missile);
+                },
+                Err(err) => {
+                    warn!(?err);
+                }
+            }
+        },
+        PacketType::ExplodeMissile => {
+            match ExplodeMissileCommand::try_from(packet) {
+                Ok(explode_missile) => {
+                    explode_missile_writer.send(explode_missile);
+                },
+                Err(err) => {
+                    warn!(?err);
+                }
+            }
+        },
     }
 }

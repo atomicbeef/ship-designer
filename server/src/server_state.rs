@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use bevy::utils::hashbrown::HashMap;
+use bevy::utils::HashMap;
 use uflow::SendMode;
 use uflow::server::Server;
 

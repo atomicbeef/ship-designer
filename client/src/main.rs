@@ -4,13 +4,14 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_prototype_debug_lines::DebugLinesPlugin;
 use bevy_rapier3d::prelude::*;
+use common::missile::MissilePlugin;
+use missile::ClientMissilePlugin;
 use raycast_selection::{update_intersections, SelectionSource};
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
-use common::index::IndexPlugin;
-use common::network_id::NetworkId;
 use common::player::Players;
 use common::predefined_parts::add_hardcoded_parts;
 use common::part::{Parts, PartId, PartPlugin};
@@ -19,6 +20,7 @@ mod building;
 mod building_material;
 mod camera;
 mod connection_state;
+mod missile;
 mod part;
 mod packet_handling;
 mod player_connection;
@@ -62,9 +64,11 @@ fn main() {
         .add_plugin(FreeCameraPlugin)
         .add_plugin(BuildingPlugin)
         .add_plugin(PlayerConnectionPlugin)
-        .add_plugin(IndexPlugin::<NetworkId>::new())
         .add_plugin(PartPlugin)
         .add_plugin(ClientPartPlugin)
+        .add_plugin(MissilePlugin)
+        .add_plugin(ClientMissilePlugin)
+        .add_plugin(DebugLinesPlugin::default())
         .add_startup_system(set_window_title)
         .add_startup_system(setup)
         .add_system(disconnect_on_esc)

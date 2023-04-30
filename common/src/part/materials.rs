@@ -1,8 +1,10 @@
+use bevy::utils::HashMap;
+use bevy::prelude::*;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum Material {
     Empty,
@@ -23,5 +25,22 @@ impl PacketDeserialize for Material {
             Ok(material) => Ok(material),
             Err(_) => Err(PacketError::InvalidPacketError(packet.clone()))
         }
+    }
+}
+
+#[derive(Resource)]
+pub struct MaterialResistances(HashMap<Material, f32>);
+
+impl MaterialResistances {
+    pub fn new() -> Self {
+        let mut resistances = HashMap::new();
+        resistances.insert(Material::Empty, 0.0);
+        resistances.insert(Material::Aluminum, 0.0);
+
+        Self(resistances)
+    }
+
+    pub fn get(&self, material: Material) -> f32 {
+        self.0.get(&material).copied().unwrap()
     }
 }

@@ -99,6 +99,7 @@ fn send_player_disconnected(
 }
 
 pub struct PlayerConnectionPlugin;
+
 impl Plugin for PlayerConnectionPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PlayerConnected>()

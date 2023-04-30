@@ -8,7 +8,7 @@ use bevy_rapier3d::prelude::*;
 use common::network_id::NetworkId;
 use common::compact_transform::CompactTransform;
 use common::part::events::{PlacePartRequest, DeletePartRequest};
-use common::materials::Material;
+use common::part::materials::Material;
 use common::part::{PartHandle, Parts, PartId, VOXEL_SIZE};
 
 use crate::building_material::BuildingMaterial;
@@ -177,7 +177,7 @@ fn create_build_request_events(
                 
                 let voxel_pos = (inverse_intersection + part.center() - inverse_normal * Vec3::splat(VOXEL_SIZE / 2.0)) / VOXEL_SIZE;
 
-                part.set(voxel_pos.x as u8, voxel_pos.y as u8, voxel_pos.z as u8, Material::Empty);
+                part.set(voxel_pos.into(), Material::Empty);
 
                 regenerate_part_mesh_writer.send(RegeneratePartMesh(part_entity));
                 regenerate_collider_writer.send(RegenerateColliders(part_entity));
@@ -210,6 +210,7 @@ fn create_build_request_events(
 }
 
 pub struct BuildingPlugin;
+
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MaterialPlugin::<BuildingMaterial>::default())

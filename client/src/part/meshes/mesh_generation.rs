@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
-use common::part::{Part, PartHandle, Parts, VOXEL_SIZE};
-use common::materials::Material;
+use common::part::{Part, PartHandle, Parts, VOXEL_SIZE, VoxelPos};
+use common::part::materials::Material;
 
 use super::PartMeshHandles;
 
@@ -87,7 +87,7 @@ pub fn generate_part_mesh(
     for s_x in 0..part.width() {
         for s_y in 0..part.height() {
             for s_z in 0..part.depth() {
-                if matches!(part.get(s_x, s_y, s_z), Material::Empty) {
+                if matches!(part.get(VoxelPos::new(s_x, s_y, s_z)), Material::Empty) {
                     continue;
                 }
 

@@ -91,6 +91,7 @@ fn cursor_grab(
 }
 
 pub struct FreeCameraPlugin;
+
 impl Plugin for FreeCameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Orientation>()

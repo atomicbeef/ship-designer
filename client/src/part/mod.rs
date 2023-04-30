@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
 use common::channels::Channel;
+use common::entity_lookup;
 use common::packets::Packet;
-use common::part::events::{UpdateVoxels, PlacePartRequest, DeletePartRequest, PlacePartCommand, DeletePartCommand};
-use common::index::Index;
+use common::part::events::{VoxelUpdate, PlacePartRequest, DeletePartRequest, PlacePartCommand, DeletePartCommand};
 use common::network_id::NetworkId;
 use common::part::{PartHandle, Parts};
 use common::part::colliders::{PartCollider, RegenerateColliders, generate_collider_data};
@@ -58,18 +58,20 @@ pub fn spawn_part(
 }
 
 fn update_voxels(
-    mut update_voxels_reader: EventReader<UpdateVoxels>,
+    mut voxel_update_reader: EventReader<VoxelUpdate>,
     mut regenerate_part_mesh_writer: EventWriter<RegeneratePartMesh>,
-    network_id_index: Res<Index<NetworkId>>,
+    mut regenerate_colliders_writer: EventWriter<RegenerateColliders>,
+    entity_query: Query<(Entity, &NetworkId), With<PartHandle>>,
     mut part_handle_query: Query<&mut PartHandle>,
     mut parts: ResMut<Parts>
 ) {
-    for voxel_update in update_voxels_reader.iter() {
-        if let Some(entity) = network_id_index.entity(&voxel_update.network_id) {
+    for voxel_update in voxel_update_reader.iter() {
+        if let Some(entity) = entity_lookup::lookup(&entity_query, &voxel_update.network_id) {
             if let Ok(mut part_handle) = part_handle_query.get_mut(entity) {
                 if let Some(part) = parts.get_mut(&mut part_handle) {
                     part.set_voxels(&voxel_update.voxels);
                     regenerate_part_mesh_writer.send(RegeneratePartMesh(entity));
+                    regenerate_colliders_writer.send(RegenerateColliders(entity));
                 }
             }
         }
@@ -143,7 +145,7 @@ fn place_parts(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<BuildingMaterial>>,
     parts: Res<Parts>,
-    network_id_index: Res<Index<NetworkId>>
+    entity_query: Query<(Entity, &NetworkId)>,
 ) {
     for event in place_part_command_reader.iter() {
         let transform = Transform::from(event.transform);
@@ -156,7 +158,7 @@ fn place_parts(
             parts.get_handle(event.part_id),
             transform,
             event.part_network_id,
-            network_id_index.entity(&event.construct_network_id).unwrap()
+            entity_lookup::lookup(&entity_query, &event.construct_network_id).unwrap()
         );
         
         debug!("Spawned part with entity ID {:?}", entity);
@@ -197,11 +199,12 @@ fn delete_parts(
 }
 
 pub struct ClientPartPlugin;
+
 impl Plugin for ClientPartPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PartMeshHandles::new())
             .add_event::<RegeneratePartMesh>()
-            .add_event::<UpdateVoxels>()
+            .add_event::<VoxelUpdate>()
             .add_system(update_voxels)
             .add_system(regenerate_part_mesh.after(update_voxels))
             .add_system(regenerate_colliders.after(update_voxels))

@@ -4,5 +4,6 @@ use num_enum::IntoPrimitive;
 #[repr(usize)]
 pub enum Channel {
     PlayerConnectionEvents,
-    PartCommands
+    PartCommands,
+    Missile,
 }

@@ -99,12 +99,12 @@ impl From<&DeletePartCommand> for Packet {
     }
 }
 
-pub struct UpdateVoxels {
+pub struct VoxelUpdate {
     pub network_id: NetworkId,
     pub voxels: Vec<Material>
 }
 
-impl TryFrom<Packet> for UpdateVoxels {
+impl TryFrom<Packet> for VoxelUpdate {
     type Error = PacketError;
 
     fn try_from(mut packet: Packet) -> Result<Self, Self::Error> {
@@ -115,9 +115,9 @@ impl TryFrom<Packet> for UpdateVoxels {
     }
 }
 
-impl From<&UpdateVoxels> for Packet {
-    fn from(value: &UpdateVoxels) -> Self {
-        let mut packet = Packet::new(PacketType::UpdateVoxels);
+impl From<&VoxelUpdate> for Packet {
+    fn from(value: &VoxelUpdate) -> Self {
+        let mut packet = Packet::new(PacketType::VoxelUpdate);
 
         value.network_id.serialize(&mut packet);
         value.voxels.serialize(&mut packet);

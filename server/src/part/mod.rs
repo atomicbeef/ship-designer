@@ -2,14 +2,15 @@ use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::prelude::systems::init_colliders;
+use common::entity_lookup;
 use common::part::colliders::{PartCollider, RegenerateColliders};
 use common::player::Players;
+use common::ship::Ship;
 use uflow::SendMode;
 
 use common::part::colliders::{ColliderData, generate_collider_data};
 use common::channels::Channel;
-use common::part::events::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand};
-use common::index::Index;
+use common::part::events::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand, VoxelUpdate};
 use common::network_id::NetworkId;
 use common::packets::Packet;
 use common::part::{Parts, PartHandle};
@@ -81,7 +82,13 @@ fn confirm_place_part_requests(
         .collect();
 
     for place_part_request in place_part_requests {
-        let construct = world.get_resource::<Index<NetworkId>>().unwrap().entity(&place_part_request.construct_network_id).unwrap();
+        let mut construct_query = world.query_filtered::<(Entity, &NetworkId), With<Ship>>();
+        let construct = entity_lookup::lookup_exclusive(
+            world,
+            &mut construct_query,
+            &place_part_request.construct_network_id
+        ).unwrap();
+
         let construct_transform = world.get::<GlobalTransform>(construct).unwrap();
         let part_transform = Transform::from(place_part_request.part_transform);
         let (_, part_global_rotation, part_global_translation) = construct_transform.mul_transform(part_transform).to_scale_rotation_translation();
@@ -207,6 +214,25 @@ fn send_delete_part_commands(
     }
 }
 
+fn send_voxel_updates(
+    mut server_state: NonSendMut<ServerState>,
+    players: Res<Players>,
+    mut voxel_update_reader: EventReader<VoxelUpdate>,
+) {
+    for voxel_update in voxel_update_reader.iter() {
+        let packet = Packet::from(voxel_update);
+
+        for &player_id in players.ids() {
+            server_state.send_to_player(
+                player_id,
+                (&packet).into(),
+                Channel::PartCommands.into(),
+                SendMode::Reliable,
+            );
+        }
+    }
+}
+
 fn regenerate_colliders(
     mut commands: Commands,
     mut regenerate_colliders_reader: EventReader<RegenerateColliders>,
@@ -247,12 +273,14 @@ fn regenerate_colliders(
 }
 
 pub struct ServerPartPlugin;
+
 impl Plugin for ServerPartPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(confirm_place_part_requests)
             .add_system(send_place_part_commands.after(confirm_place_part_requests))
             .add_system(confirm_delete_part_requests)
             .add_system(send_delete_part_commands.after(confirm_delete_part_requests))
+            .add_system(send_voxel_updates)
             .add_system(regenerate_colliders);
     }
 }
