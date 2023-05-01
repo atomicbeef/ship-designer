@@ -12,7 +12,7 @@ use common::missile::{Missile, SpawnMissileRequest, SpawnMissileCommand, Explode
 use common::player::Players;
 use common::packets::Packet;
 use common::channels::Channel;
-use common::part::{PartHandle, Parts, VOXEL_SIZE};
+use common::part::{PartHandle, Parts, VOXEL_SIZE, DeletePart};
 
 use crate::network_id_generator::NetworkIdGenerator;
 use crate::server_state::ServerState;
@@ -120,7 +120,7 @@ fn explode_missiles(
         let network_id = network_id_query.get(affected_part).copied().unwrap();
         
         if part.is_empty() {
-            deleted_parts.insert(network_id);
+            deleted_parts.insert((affected_part, network_id));
         } else {
             modified_parts.insert((affected_part, network_id, Vec::from(part.voxels())));
         }
@@ -131,8 +131,10 @@ fn explode_missiles(
         voxel_update_writer.send(VoxelUpdate { network_id, voxels });
     }
 
-    for deleted_part in deleted_parts {
-        delete_part_command_writer.send(DeletePartCommand(deleted_part));
+    for (entity, network_id) in deleted_parts {
+        commands.add(DeletePart(entity));
+
+        delete_part_command_writer.send(DeletePartCommand(network_id));
     }
 }
 

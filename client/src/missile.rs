@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::prelude::shape::Cube;
 use bevy_rapier3d::prelude::*;
-use common::entity_lookup;
+use common::entity_lookup::lookup;
 use common::network_id::NetworkId;
 use uflow::SendMode;
 
@@ -75,7 +75,7 @@ fn explode_missiles(
     mut commands: Commands
 ) {
     for explode_event in explode_event_reader.iter() {
-        if let Some(entity) = entity_lookup::lookup(&network_id_query, &explode_event.network_id) {
+        if let Some(entity) = lookup(&network_id_query, &explode_event.network_id) {
             commands.entity(entity).despawn();
         }
     }

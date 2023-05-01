@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 
+use bevy::ecs::system::Command;
 use bevy::log::debug;
 use bevy::prelude::*;
 use bevy::reflect::Reflect;
@@ -11,6 +12,8 @@ use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 use events::*;
 use colliders::{RegenerateColliders, remove_unused_colliders};
 use materials::Material;
+
+use self::colliders::PartCollider;
 
 pub mod colliders;
 pub mod events;
@@ -364,6 +367,28 @@ pub fn free_parts(mut parts: ResMut<Parts>, mut freed_parts_writer: EventWriter<
     }
 
     freed_parts_writer.send(FreedParts(unused_part_ids));
+}
+
+pub struct DeletePart(pub Entity);
+
+impl Command for DeletePart {
+    fn write(self, world: &mut World) {
+        let construct = world.get::<Parent>(self.0).unwrap().get();
+    
+        // Remove colliders
+        let children = world.get::<Children>(construct).unwrap().to_vec();
+        for child in children {
+            if let Some(part_collider) = world.get::<PartCollider>(child) {
+                if part_collider.part == self.0 {
+                    world.entity_mut(construct).remove_children(&[child]);
+                    world.entity_mut(child).despawn();
+                }
+            }
+        }
+
+        world.entity_mut(construct).remove_children(&[self.0]);
+        world.entity_mut(self.0).despawn();
+    }
 }
 
 pub struct PartPlugin;

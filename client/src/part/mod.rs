@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 
 use common::channels::Channel;
-use common::entity_lookup;
+use common::entity_lookup::lookup;
 use common::packets::Packet;
 use common::part::events::{VoxelUpdate, PlacePartRequest, DeletePartRequest, PlacePartCommand, DeletePartCommand};
 use common::network_id::NetworkId;
-use common::part::{PartHandle, Parts};
+use common::part::{PartHandle, Parts, DeletePart};
 use common::part::colliders::{PartCollider, RegenerateColliders, generate_collider_data};
 
 use meshes::{PartMeshHandles, get_mesh_or_generate, free_part_mesh_handles};
@@ -66,7 +66,7 @@ fn update_voxels(
     mut parts: ResMut<Parts>
 ) {
     for voxel_update in voxel_update_reader.iter() {
-        if let Some(entity) = entity_lookup::lookup(&entity_query, &voxel_update.network_id) {
+        if let Some(entity) = lookup(&entity_query, &voxel_update.network_id) {
             if let Ok(mut part_handle) = part_handle_query.get_mut(entity) {
                 if let Some(part) = parts.get_mut(&mut part_handle) {
                     part.set_voxels(&voxel_update.voxels);
@@ -158,7 +158,7 @@ fn place_parts(
             parts.get_handle(event.part_id),
             transform,
             event.part_network_id,
-            entity_lookup::lookup(&entity_query, &event.construct_network_id).unwrap()
+            lookup(&entity_query, &event.construct_network_id).unwrap()
         );
         
         debug!("Spawned part with entity ID {:?}", entity);
@@ -168,32 +168,11 @@ fn place_parts(
 fn delete_parts(
     mut delete_part_command_reader: EventReader<DeletePartCommand>,
     mut commands: Commands,
-    part_query: Query<(Entity, &NetworkId)>,
-    parent_query: Query<&Parent>,
-    construct_children_query: Query<&Children>,
-    part_collider_query: Query<&PartCollider>,
+    part_query: Query<(Entity, &NetworkId)>
 ) {
     for event in delete_part_command_reader.iter() {
-        for (part_entity, network_id) in part_query.iter() {
-            if *network_id == event.0 {
-                let construct = parent_query.get(part_entity).unwrap().get();
-
-                // Remove colliders
-                let children = construct_children_query.get(construct).unwrap();
-                for &child in children {
-                    if let Ok(part_collider) = part_collider_query.get(child) {
-                        if part_collider.part == part_entity {
-                            commands.entity(construct).remove_children(&[child]);
-                            commands.entity(child).despawn();
-                        }
-                    }
-                }
-
-                // Remove part
-                commands.entity(construct).remove_children(&[part_entity]);
-                commands.entity(part_entity).despawn();
-                debug!("Deleting part with entity ID {:?}", part_entity);
-            }
+        if let Some(part) = lookup(&part_query, &event.0) {
+            commands.add(DeletePart(part));
         }
     }
 }

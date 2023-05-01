@@ -2,7 +2,7 @@ use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::prelude::systems::init_colliders;
-use common::entity_lookup;
+use common::entity_lookup::{lookup_exclusive, lookup};
 use common::part::colliders::{PartCollider, RegenerateColliders};
 use common::player::Players;
 use common::ship::Ship;
@@ -13,7 +13,7 @@ use common::channels::Channel;
 use common::part::events::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand, VoxelUpdate};
 use common::network_id::NetworkId;
 use common::packets::Packet;
-use common::part::{Parts, PartHandle};
+use common::part::{Parts, PartHandle, DeletePart};
 
 use crate::network_id_generator::NetworkIdGenerator;
 use crate::server_state::ServerState;
@@ -83,7 +83,7 @@ fn confirm_place_part_requests(
 
     for place_part_request in place_part_requests {
         let mut construct_query = world.query_filtered::<(Entity, &NetworkId), With<Ship>>();
-        let construct = entity_lookup::lookup_exclusive(
+        let construct = lookup_exclusive(
             world,
             &mut construct_query,
             &place_part_request.construct_network_id
@@ -146,32 +146,13 @@ fn confirm_delete_part_requests(
     mut commands: Commands,
     mut delete_part_request_reader: EventReader<DeletePartRequest>,
     mut send_delete_part_writer: EventWriter<DeletePartCommand>,
-    network_id_query: Query<(Entity, &NetworkId), With<PartHandle>>,
-    construct_children_query: Query<&Children>,
-    part_collider_query: Query<&PartCollider>,
-    parent_query: Query<&Parent>
+    network_id_query: Query<(Entity, &NetworkId), With<PartHandle>>
 ) {
     for delete_part_request in delete_part_request_reader.iter() {
-        for (part_entity, network_id) in network_id_query.iter() {
-            if *network_id == delete_part_request.0 {
-                let construct = parent_query.get(part_entity).unwrap().get();
+        if let Some(part) = lookup(&network_id_query, &delete_part_request.0) {
+            commands.add(DeletePart(part));
 
-                // Remove colliders
-                let children = construct_children_query.get(construct).unwrap();
-                for &child in children {
-                    if let Ok(part_collider) = part_collider_query.get(child) {
-                        if part_collider.part == part_entity {
-                            commands.entity(construct).remove_children(&[child]);
-                            commands.entity(child).despawn();
-                        }
-                    }
-                }
-
-                commands.entity(construct).remove_children(&[part_entity]);
-                commands.entity(part_entity).despawn();
-                send_delete_part_writer.send(DeletePartCommand(delete_part_request.0));
-                break;
-            }
+            send_delete_part_writer.send(DeletePartCommand(delete_part_request.0));
         }
     }
 }
