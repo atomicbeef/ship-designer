@@ -6,7 +6,7 @@ use uflow::client::{Event::*, ErrorType};
 
 use common::part::events::{PlacePartCommand, DeletePartCommand};
 use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
-use common::packets::{Packet, PacketType};
+use packets::{Packet, PacketType};
 
 use crate::connection_state::ConnectionState;
 

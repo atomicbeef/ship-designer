@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use common::channels::Channel;
 use common::entity_lookup::lookup;
-use common::packets::Packet;
+use packets::Packet;
 use common::part::events::{VoxelUpdate, PlacePartRequest, DeletePartRequest, PlacePartCommand, DeletePartCommand};
 use common::network_id::NetworkId;
 use common::part::{PartHandle, Parts, DeletePart};

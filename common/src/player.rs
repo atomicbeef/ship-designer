@@ -1,9 +1,9 @@
 use bevy::prelude::Resource;
 use bevy::utils::HashMap;
 
-use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
+use packets_derive::{PacketSerialize, PacketDeserialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PacketSerialize, PacketDeserialize)]
 pub struct PlayerId {
     id: u8
 }
@@ -14,20 +14,7 @@ impl From<u8> for PlayerId {
     }
 }
 
-impl PacketSerialize for PlayerId {
-    fn serialize(&self, packet: &mut Packet) {
-        self.id.serialize(packet);
-    }
-}
-
-impl PacketDeserialize for PlayerId {
-    fn deserialize(packet: &mut Packet) -> Result<Self, PacketError> {
-        let id = u8::deserialize(packet)?;
-        Ok(Self { id })
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PacketSerialize, PacketDeserialize)]
 pub struct Player {
     id: PlayerId,
     name: String
@@ -44,21 +31,6 @@ impl Player {
 
     pub fn name(&self) -> &String {
         &self.name
-    }
-}
-
-impl PacketSerialize for Player {
-    fn serialize(&self, packet: &mut Packet) {
-        self.id().serialize(packet);
-        self.name().serialize(packet);
-    }
-}
-
-impl PacketDeserialize for Player {
-    fn deserialize(packet: &mut Packet) -> Result<Self, PacketError> {
-        let id = PlayerId::deserialize(packet)?;
-        let name = String::deserialize(packet)?;
-        Ok(Player::new(id, name))
     }
 }
 

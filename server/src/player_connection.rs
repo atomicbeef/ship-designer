@@ -7,7 +7,7 @@ use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialStat
 use common::network_id::NetworkId;
 use common::part::{PartHandle, Parts, PartNetworkRepr};
 use common::compact_transform::CompactTransform;
-use common::packets::Packet;
+use packets::Packet;
 use common::player::{Player, Players};
 
 use crate::server_state::ServerState;

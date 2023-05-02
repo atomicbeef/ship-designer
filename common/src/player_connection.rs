@@ -1,5 +1,5 @@
 use crate::network_id::NetworkId;
-use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
+use packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
 use crate::player::{Player, PlayerId};
 use crate::part::PartNetworkRepr;
 use crate::compact_transform::CompactTransform;

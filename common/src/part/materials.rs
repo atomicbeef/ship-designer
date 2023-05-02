@@ -2,7 +2,7 @@ use bevy::utils::HashMap;
 use bevy::prelude::*;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
+use packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]

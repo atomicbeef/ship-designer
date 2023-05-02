@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
+use packets_derive::{PacketSerialize, PacketDeserialize};
 
-#[derive(Clone, Copy, Component, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Component, Debug, PartialEq, Eq, Hash, PacketSerialize, PacketDeserialize)]
 pub struct NetworkId {
     id: u32
 }
@@ -16,18 +16,5 @@ impl NetworkId {
 impl From<u32> for NetworkId {
     fn from(id: u32) -> Self {
         Self { id }
-    }
-}
-
-impl PacketSerialize for NetworkId {
-    fn serialize(&self, packet: &mut Packet) {
-        self.id.serialize(packet);
-    }
-}
-
-impl PacketDeserialize for NetworkId {
-    fn deserialize(packet: &mut Packet) -> Result<Self, PacketError> {
-        let id = u32::deserialize(packet)?;
-        Ok(Self::from(id))
     }
 }

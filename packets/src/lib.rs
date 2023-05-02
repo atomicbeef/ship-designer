@@ -108,7 +108,7 @@ impl From<&Packet> for Box<[u8]> {
 
 #[cfg(test)]
 mod tests {
-    use crate::packets::{Packet, PacketType::PlayerConnected, PacketSerialize, PacketDeserialize};
+    use crate::{Packet, PacketType::PlayerConnected, PacketSerialize, PacketDeserialize};
 
     #[test]
     fn u8_serialize_deserialize() {

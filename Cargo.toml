@@ -2,7 +2,9 @@
 members = [
     "client",
     "common",
-    "server"
+    "server",
+    "packets",
+    "packets-derive",
 ]
 resolver = "2"
 

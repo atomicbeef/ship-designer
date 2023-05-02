@@ -1,8 +1,7 @@
 use bevy::prelude::{Transform, Vec3, Quat, GlobalTransform};
+use packets_derive::{PacketSerialize, PacketDeserialize};
 
-use crate::packets::{Packet, PacketError, PacketSerialize, PacketDeserialize};
-
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PacketSerialize, PacketDeserialize)]
 pub struct CompactTransform {
     pub translation: Vec3,
     pub rotation: Quat
@@ -25,22 +24,6 @@ impl From<CompactTransform> for Transform {
             rotation: value.rotation,
             scale: Vec3::splat(1.0)
         }
-    }
-}
-
-impl PacketSerialize for CompactTransform {
-    fn serialize(&self, packet: &mut Packet) {
-        self.translation.serialize(packet);
-        self.rotation.serialize(packet);
-    }
-}
-
-impl PacketDeserialize for CompactTransform {
-    fn deserialize(packet: &mut Packet) -> Result<Self, PacketError> {
-        let translation = Vec3::deserialize(packet)?;
-        let rotation = Quat::deserialize(packet)?;
-
-        Ok(Self::new(translation, rotation))
     }
 }
 

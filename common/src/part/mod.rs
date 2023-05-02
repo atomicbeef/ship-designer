@@ -7,11 +7,12 @@ use bevy::reflect::Reflect;
 use bevy::utils::{hashbrown::hash_map, HashMap};
 use crossbeam_channel::{Sender, Receiver};
 
-use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
+use packets::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
 use events::*;
 use colliders::{RegenerateColliders, remove_unused_colliders};
 use materials::Material;
+use packets_derive::{PacketSerialize, PacketDeserialize};
 
 use self::colliders::PartCollider;
 
@@ -22,7 +23,7 @@ pub mod materials;
 // Voxels are 10^3 cm^3
 pub const VOXEL_SIZE: f32 = 0.1;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect, PacketSerialize, PacketDeserialize)]
 pub struct PartId {
     id: u32
 }
@@ -36,19 +37,6 @@ impl PartId {
 impl From<u32> for PartId {
     fn from(id: u32) -> Self {
         Self { id }
-    }
-}
-
-impl PacketSerialize for PartId {
-    fn serialize(&self, packet: &mut Packet) {
-        self.id.serialize(packet);
-    }
-}
-
-impl PacketDeserialize for PartId {
-    fn deserialize(packet: &mut Packet) -> Result<Self, PacketError> {
-        let id = u32::deserialize(packet)?;
-        Ok(Self::from(id))
     }
 }
 
@@ -77,7 +65,7 @@ impl From<VoxelPos> for Vec3 {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PacketSerialize, PacketDeserialize)]
 pub struct Part {
     width: u8,
     height: u8,
@@ -172,28 +160,6 @@ impl Part {
 
     pub fn is_empty(&self) -> bool {
         self.voxels.iter().all(|&material| material == Material::Empty)
-    }
-}
-
-impl PacketSerialize for &Part {
-    fn serialize(&self, packet: &mut Packet) {
-        self.width.serialize(packet);
-        self.height.serialize(packet);
-        self.depth.serialize(packet);
-        self.voxels.as_slice().serialize(packet);
-        self.parent_part_id.serialize(packet);
-    }
-}
-
-impl PacketDeserialize for Part {
-    fn deserialize(packet: &mut Packet) -> Result<Self, PacketError> {
-        let width = u8::deserialize(packet)?;
-        let height = u8::deserialize(packet)?;
-        let depth = u8::deserialize(packet)?;
-        let voxels: Vec<Material> = Vec::deserialize(packet)?;
-        let parent_part_id: Option<PartId> = Option::deserialize(packet)?;
-
-        Ok(Self::new(width, height, depth, voxels, parent_part_id))
     }
 }
 

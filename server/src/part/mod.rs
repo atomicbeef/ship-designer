@@ -12,7 +12,7 @@ use common::part::colliders::{ColliderData, generate_collider_data};
 use common::channels::Channel;
 use common::part::events::{PlacePartRequest, PlacePartCommand, DeletePartRequest, DeletePartCommand, VoxelUpdate};
 use common::network_id::NetworkId;
-use common::packets::Packet;
+use packets::Packet;
 use common::part::{Parts, PartHandle, DeletePart};
 
 use crate::network_id_generator::NetworkIdGenerator;

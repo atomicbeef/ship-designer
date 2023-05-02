@@ -10,7 +10,7 @@ use common::part::events::{VoxelUpdate, DeletePartCommand};
 use common::part::materials::{Material, MaterialResistances};
 use common::missile::{Missile, SpawnMissileRequest, SpawnMissileCommand, ExplodeMissileCommand, MissileBundle};
 use common::player::Players;
-use common::packets::Packet;
+use packets::Packet;
 use common::channels::Channel;
 use common::part::{PartHandle, Parts, VOXEL_SIZE, DeletePart};
 

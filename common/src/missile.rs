@@ -3,7 +3,7 @@ use bevy_rapier3d::prelude::*;
 
 use crate::compact_transform::CompactTransform;
 use crate::network_id::NetworkId;
-use crate::packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
+use packets::{Packet, PacketSerialize, PacketDeserialize, PacketError, PacketType};
 
 #[derive(Component)]
 pub struct Missile {

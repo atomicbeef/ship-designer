@@ -2349,6 +2349,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "packets"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "num_enum 0.6.1",
+ "thiserror",
+]
+
+[[package]]
+name = "packets-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.15",
+]
+
+[[package]]
 name = "parking"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2757,6 +2774,7 @@ dependencies = [
  "bevy_prototype_debug_lines",
  "bevy_rapier3d",
  "num_enum 0.6.1",
+ "packets",
  "ship-designer-common",
  "uflow",
 ]
@@ -2769,7 +2787,8 @@ dependencies = [
  "bevy_rapier3d",
  "crossbeam-channel",
  "num_enum 0.6.1",
- "thiserror",
+ "packets",
+ "packets-derive",
  "uflow",
 ]
 
@@ -2780,6 +2799,7 @@ dependencies = [
  "bevy",
  "bevy_rapier3d",
  "num_enum 0.6.1",
+ "packets",
  "ship-designer-common",
  "uflow",
 ]

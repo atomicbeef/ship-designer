@@ -5,7 +5,7 @@ use uflow::server::ErrorType;
 
 use common::part::events::{PlacePartRequest, DeletePartRequest};
 use common::player_connection::{PlayerConnected, PlayerDisconnected};
-use common::packets::{Packet, PacketType};
+use packets::{Packet, PacketType};
 use common::player::Players;
 
 use crate::server_state::ServerState;

@@ -1,7 +1,6 @@
 pub mod channels;
 pub mod entity_lookup;
 pub mod network_id;
-pub mod packets;
 pub mod player;
 pub mod player_connection;
 pub mod predefined_parts;

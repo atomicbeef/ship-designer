@@ -6,7 +6,7 @@ use common::network_id::NetworkId;
 use uflow::SendMode;
 
 use common::missile::{SpawnMissileRequest, SpawnMissileCommand, MissileBundle, ExplodeMissileCommand, Missile};
-use common::packets::Packet; 
+use packets::Packet; 
 use common::channels::Channel;
 
 use crate::connection_state::ConnectionState;
