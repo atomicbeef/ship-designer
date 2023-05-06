@@ -1,5 +1,11 @@
 use super::{Packet, PacketSerialize, PacketDeserialize, PacketError};
 
+impl<T: PacketSerialize> PacketSerialize for &T {
+    fn serialize(&self, packet: &mut Packet) {
+        (**self).serialize(packet);
+    }
+}
+
 impl PacketSerialize for u8 {
     fn serialize(&self, packet: &mut Packet) {
         packet.data.push(*self);
@@ -88,7 +94,7 @@ impl PacketDeserialize for u64 {
     }
 }
 
-impl PacketSerialize for &String {
+impl PacketSerialize for String {
     // A maximum of 2^16 characters will be written
     // Any remaining characters in the string will silently be ignored
     fn serialize(&self, packet: &mut Packet) {
@@ -132,6 +138,15 @@ impl<T: PacketSerialize> PacketSerialize for &[T] {
     fn serialize(&self, packet: &mut Packet) {
         (self.len() as u64).serialize(packet);
         for elem in self.into_iter() {
+            elem.serialize(packet);
+        }
+    }
+}
+
+impl<T: PacketSerialize> PacketSerialize for Vec<T> {
+    fn serialize(&self, packet: &mut Packet) {
+        (self.len() as u64).serialize(packet);
+        for elem in self {
             elem.serialize(packet);
         }
     }
