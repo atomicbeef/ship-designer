@@ -9,7 +9,7 @@ use common::part::colliders::{RegenerateColliders, PartCollider};
 use common::part::events::{VoxelUpdate, DeletePartCommand};
 use common::part::materials::{Material, MaterialResistances};
 use common::missile::{Missile, SpawnMissileRequest, SpawnMissileCommand, ExplodeMissileCommand, MissileBundle};
-use common::player::Players;
+use common::player::PlayerId;
 use packets::Packet;
 use common::channels::Channel;
 use common::part::{PartHandle, Parts, VOXEL_SIZE, DeletePart};
@@ -45,13 +45,13 @@ fn spawn_missiles(
 
 fn send_spawn_missile_commands(
     mut server_state: NonSendMut<ServerState>,
-    players: Res<Players>,
+    player_id_query: Query<&PlayerId>,
     mut spawn_command_reader: EventReader<SpawnMissileCommand>
 ) {
     for spawn_command in spawn_command_reader.iter() {
         let packet = Packet::from(spawn_command);
 
-        for &player_id in players.ids() {
+        for &player_id in player_id_query.iter() {
             server_state.send_to_player(
                 player_id,
                 (&packet).into(),
@@ -225,13 +225,13 @@ fn explode_missile(
 
 fn send_explode_missile_commands(
     mut server_state: NonSendMut<ServerState>,
-    players: Res<Players>,
+    player_id_query: Query<&PlayerId>,
     mut explode_missile_command_reader: EventReader<ExplodeMissileCommand>,
 ) {
     for explode_missile in explode_missile_command_reader.iter() {
         let packet = Packet::from(explode_missile);
 
-        for &player_id in players.ids() {
+        for &player_id in player_id_query.iter() {
             server_state.send_to_player(
                 player_id,
                 (&packet).into(),

@@ -7,7 +7,6 @@ use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
 use common::missile::MissilePlugin;
-use common::player::Players;
 use common::ship::Ship;
 use bevy_rapier3d::prelude::*;
 
@@ -50,7 +49,6 @@ fn main() {
         .add_plugin(ServerMissilePlugin)
         .insert_resource(FixedTime::new(Duration::from_millis(16)))
         .insert_resource(NetworkIdGenerator::new())
-        .insert_resource(Players::new())
         .add_startup_system(setup_server)
         .add_startup_system(setup)
         .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))

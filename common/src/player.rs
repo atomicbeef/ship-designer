@@ -1,9 +1,7 @@
-use bevy::prelude::Resource;
-use bevy::utils::HashMap;
-
+use bevy::prelude::Component;
 use packets_derive::{PacketSerialize, PacketDeserialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PacketSerialize, PacketDeserialize)]
+#[derive(Clone, Copy, Debug, Component, PartialEq, Eq, Hash, PacketSerialize, PacketDeserialize)]
 pub struct PlayerId {
     id: u8
 }
@@ -14,53 +12,19 @@ impl From<u8> for PlayerId {
     }
 }
 
-#[derive(Clone, Debug, PacketSerialize, PacketDeserialize)]
-pub struct Player {
-    id: PlayerId,
+#[derive(Clone, Debug, Component, PacketSerialize, PacketDeserialize)]
+pub struct PlayerName {
     name: String
 }
 
-impl Player {
-    pub fn new(id: PlayerId, name: String) -> Self {
-        Self { id, name }
-    }
-
-    pub fn id(&self) -> PlayerId {
-        self.id
-    }
-
-    pub fn name(&self) -> &String {
-        &self.name
+impl From<String> for PlayerName {
+    fn from(name: String) -> Self {
+        PlayerName { name }
     }
 }
 
-#[derive(Resource)]
-pub struct Players {
-    players: HashMap<PlayerId, Player>
-}
-
-impl Players {
-    pub fn new() -> Self {
-        Self { players: HashMap::new() }
-    }
-
-    pub fn add_player(&mut self, player: Player) {
-        self.players.insert(player.id(), player);
-    }
-
-    pub fn remove_player(&mut self, id: PlayerId) {
-        self.players.remove(&id);
-    }
-
-    pub fn player(&self, id: PlayerId) -> Option<&Player> {
-        self.players.get(&id)
-    }
-
-    pub fn ids(&self) -> impl Iterator<Item = &PlayerId> {
-        self.players.keys()
-    }
-
-    pub fn players(&self) -> impl Iterator<Item = &Player> {
-        self.players.values()
+impl std::fmt::Display for PlayerName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.name.fmt(f)
     }
 }

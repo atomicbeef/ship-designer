@@ -4,7 +4,7 @@ use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::prelude::systems::init_colliders;
 use common::entity_lookup::{lookup_exclusive, lookup};
 use common::part::colliders::{PartCollider, RegenerateColliders};
-use common::player::Players;
+use common::player::PlayerId;
 use common::ship::Ship;
 use uflow::SendMode;
 
@@ -159,15 +159,15 @@ fn confirm_delete_part_requests(
 
 fn send_place_part_commands(
     mut server_state: NonSendMut<ServerState>,
-    players: Res<Players>,
+    player_id_query: Query<&PlayerId>,
     mut send_place_part_reader: EventReader<PlacePartCommand>
 ) {
     for place_part_command in send_place_part_reader.iter() {
         let packet = Packet::from(place_part_command);
 
-        for player_id in players.ids() {
+        for &player_id in player_id_query.iter() {
             server_state.send_to_player(
-                *player_id,
+                player_id,
                 (&packet).into(),
                 Channel::PartCommands.into(),
                 SendMode::Reliable
@@ -178,15 +178,15 @@ fn send_place_part_commands(
 
 fn send_delete_part_commands(
     mut server_state: NonSendMut<ServerState>,
-    players: Res<Players>,
+    player_id_query: Query<&PlayerId>,
     mut send_delete_part_reader: EventReader<DeletePartCommand>
 ) {
     for delete_part_command in send_delete_part_reader.iter() {
         let packet = Packet::from(delete_part_command);
 
-        for player_id in players.ids() {
+        for &player_id in player_id_query.iter() {
             server_state.send_to_player(
-                *player_id,
+                player_id,
                 (&packet).into(),
                 Channel::PartCommands.into(),
                 SendMode::Reliable
@@ -197,13 +197,13 @@ fn send_delete_part_commands(
 
 fn send_voxel_updates(
     mut server_state: NonSendMut<ServerState>,
-    players: Res<Players>,
+    player_id_query: Query<&PlayerId>,
     mut voxel_update_reader: EventReader<VoxelUpdate>,
 ) {
     for voxel_update in voxel_update_reader.iter() {
         let packet = Packet::from(voxel_update);
 
-        for &player_id in players.ids() {
+        for &player_id in player_id_query.iter() {
             server_state.send_to_player(
                 player_id,
                 (&packet).into(),

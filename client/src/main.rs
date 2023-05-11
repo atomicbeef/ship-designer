@@ -12,7 +12,6 @@ use raycast_selection::{update_intersections, SelectionSource};
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
-use common::player::Players;
 use common::predefined_parts::add_hardcoded_parts;
 use common::part::{Parts, PartId, PartPlugin};
 
@@ -78,7 +77,6 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(FixedTime::new(Duration::from_millis(16)))
         .insert_resource(connection_state)
-        .insert_resource(Players::new())
         .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))
         .add_system(update_intersections.in_base_set(CoreSet::First))
         .register_type::<common::part::PartId>()

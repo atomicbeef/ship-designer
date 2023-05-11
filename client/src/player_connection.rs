@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
+use common::entity_lookup::lookup;
 use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
-use common::player::{Player, Players};
+use common::player::{PlayerId, PlayerName};
 use common::part::{Parts, PartNetworkRepr, PartId};
 use common::ship::Ship;
 
@@ -12,23 +13,27 @@ use crate::part::meshes::PartMeshHandles;
 
 fn player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
-    mut players: ResMut<Players>
+    mut commands: Commands
 ) {
     for player_connected in player_connected_reader.iter() {
         info!("{} connected with ID {:?}!", player_connected.name, player_connected.id);
-        let player = Player::new(player_connected.id, player_connected.name.clone());
-        players.add_player(player)
+
+        commands.spawn(player_connected.id)
+            .insert(player_connected.name.clone());
     }
 }
 
 fn player_disconnected(
     mut player_disconnected_reader: EventReader<PlayerDisconnected>,
-    mut players: ResMut<Players>
+    mut commands: Commands,
+    player_entity_query: Query<(Entity, &PlayerId)>,
+    name_query: Query<&PlayerName>
 ) {
     for player_disconnected in player_disconnected_reader.iter() {
-        if let Some(player) = players.player(player_disconnected.0) {
-            info!("{} disconnected!", player.name());
-            players.remove_player(player_disconnected.0);
+        if let Some(entity) = lookup(&player_entity_query, &player_disconnected.0) {
+            let name = name_query.get(entity).unwrap();
+            info!("{} disconnected!", name);
+            commands.entity(entity).despawn();
         }
     }
 }
@@ -38,13 +43,12 @@ fn initial_state_setup(
     mut mesh_handles: ResMut<PartMeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<BuildingMaterial>>,
-    mut players: ResMut<Players>,
     mut initial_state_reader: EventReader<InitialState>,
     mut parts: ResMut<Parts>
 ) {
     for initial_state in initial_state_reader.iter() {
-        for player in initial_state.players.iter() {
-            players.add_player(player.clone());
+        for (id, name) in initial_state.players.iter() {
+            commands.spawn(*id).insert(name.clone());
         }
 
         let construct = commands.spawn(RigidBody::Dynamic)

@@ -4,7 +4,7 @@ use bevy::utils::HashMap;
 use uflow::SendMode;
 use uflow::server::Server;
 
-use common::player::{Player, PlayerId};
+use common::player::PlayerId;
 
 pub struct ServerState {
     pub server: Server,
@@ -32,11 +32,11 @@ impl ServerState {
         }
     }
 
-    pub fn new_player(&mut self) -> Player {
+    pub fn new_player_id(&mut self) -> PlayerId {
         let id = self.current_player_id;
         self.set_next_id();
 
-        Player::new(id.into(), "Test".to_string())
+        PlayerId::from(id)
     }
 
     fn set_next_id(&mut self) {

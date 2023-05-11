@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::entity_lookup::lookup;
 use common::missile::SpawnMissileRequest;
 use uflow::server::Event::*;
 use uflow::server::ErrorType;
@@ -6,13 +7,15 @@ use uflow::server::ErrorType;
 use common::part::events::{PlacePartRequest, DeletePartRequest};
 use common::player_connection::{PlayerConnected, PlayerDisconnected};
 use packets::{Packet, PacketType};
-use common::player::Players;
+use common::player::{PlayerId, PlayerName};
 
 use crate::server_state::ServerState;
 
 pub fn process_packets(
     mut state: NonSendMut<ServerState>,
-    mut players: ResMut<Players>,
+    mut commands: Commands,
+    player_entity_query: Query<(Entity, &PlayerId)>,
+    player_name_query: Query<&PlayerName>,
     mut place_part_request_writer: EventWriter<PlacePartRequest>,
     mut delete_part_request_writer: EventWriter<DeletePartRequest>,
     mut client_connected_writer: EventWriter<PlayerConnected>,
@@ -26,22 +29,28 @@ pub fn process_packets(
             Connect(address) => {
                 info!("New incoming connection from {}", address);
 
-                let player = state.new_player();
-                state.add_client_address(player.id(), address);
+                let player_id = state.new_player_id();
+                state.add_client_address(player_id, address);
+
+                let player_name = PlayerName::from("Player".to_string());
 
                 client_connected_writer.send(PlayerConnected {
-                    id: player.id(),
-                    name: player.name().to_string()
+                    id: player_id,
+                    name: player_name.clone(),
+                    pos: Vec3::splat(30.0),
                 });
 
-                players.add_player(player);
+                commands.spawn(player_id).insert(player_name);
             },
             Disconnect(address) => {
                 if let Some(player_id) = state.player_id(address).cloned() {
-                    if let Some(player) = players.player(player_id) {
-                        info!("{} disconnected", player.name());
+                    if let Some(entity) = lookup(&player_entity_query, &player_id) {
+                        let name = player_name_query.get(entity).unwrap();
+                        info!("{} disconnected", name);
                         state.remove_client_address(player_id);
-                        client_disconnected_writer.send(PlayerDisconnected(player.id()));
+                        commands.entity(entity).despawn();
+
+                        client_disconnected_writer.send(PlayerDisconnected(player_id));
                     }
                 }
             },
@@ -65,13 +74,14 @@ pub fn process_packets(
                 match err {
                     ErrorType::Timeout => {
                         if let Some(player_id) = state.player_id(address).cloned() {
-                            if let Some(player) = players.player(player_id) {
-                                error!("{} timed out", player.name());
+                            if let Some(entity) = lookup(&player_entity_query, &player_id) {
+                                let name = player_name_query.get(entity).unwrap();
+                                error!("{} timed out", name);
                                 state.remove_client_address(player_id);
-                                client_disconnected_writer.send(PlayerDisconnected(player.id()));
-                            }
+                                commands.entity(entity).despawn();
 
-                            players.remove_player(player_id);
+                                client_disconnected_writer.send(PlayerDisconnected(player_id));
+                            }
                         }
                     },
                     ErrorType::Config => {

@@ -8,14 +8,15 @@ use common::network_id::NetworkId;
 use common::part::{PartHandle, Parts, PartNetworkRepr};
 use common::compact_transform::CompactTransform;
 use packets::Packet;
-use common::player::{Player, Players};
+use common::player::{PlayerId, PlayerName};
 
 use crate::server_state::ServerState;
 
 fn send_player_connected(
     ship_query: Query<(Entity, &NetworkId, &Transform), &Ship>,
     mut player_connected_reader: EventReader<PlayerConnected>,
-    players: Res<Players>,
+    player_id_query: Query<&PlayerId>,
+    player_query: Query<(&PlayerId, &PlayerName)>,
     mut server_state: NonSendMut<ServerState>,
     parts: Res<Parts>,
     part_query: Query<(&PartHandle, &Transform, &NetworkId)>,
@@ -26,9 +27,9 @@ fn send_player_connected(
             // Send new player connected packet to existing players
             let player_connected_packet = Packet::from(player_connected);
             
-            for player_id in players.ids() {
+            for &player_id in player_id_query.iter() {
                 server_state.send_to_player(
-                    *player_id,
+                    player_id,
                     (&player_connected_packet).into(),
                     Channel::PlayerConnectionEvents.into(),
                     SendMode::Reliable
@@ -36,7 +37,9 @@ fn send_player_connected(
             }
 
             // Send the current state of the world to the new player
-            let players: Vec<Player> = players.players().cloned().collect();
+            let players: Vec<(PlayerId, PlayerName)> = player_query.iter()
+                .map(|(player_id, player_name)| (*player_id, player_name.clone()))
+                .collect();
 
             let mut part_data: Vec<(PartNetworkRepr, CompactTransform, NetworkId)> = Vec::new();
             let ship_children = ship_children_query.get(ship).unwrap();
@@ -81,15 +84,15 @@ fn send_player_connected(
 
 fn send_player_disconnected(
     mut player_disconnected_reader: EventReader<PlayerDisconnected>,
-    players: Res<Players>,
+    player_id_query: Query<&PlayerId>,
     mut server_state: NonSendMut<ServerState>
 ) {
     for disconnected_player in player_disconnected_reader.iter() {
         let packet = Packet::from(disconnected_player);
 
-        for player_id in players.ids() {
+        for &player_id in player_id_query.iter() {
             server_state.send_to_player(
-                *player_id,
+                player_id,
                 (&packet).into(),
                 Channel::PlayerConnectionEvents.into(),
                 SendMode::Reliable
