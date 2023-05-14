@@ -154,9 +154,12 @@ fn explode_missile(
 
     let points = 5000;
     for i in 0..points {
+        // Add an offset to each point to optimize for nearest neighbor distance
+        let offset_point = i as f32 + 0.36;
+
         let angle_increment = (1.0 + 5.0_f32.sqrt()) / 2.0;
-        let incline = (1.0 - 2.0 * (i as f32 / points as f32)).acos();
-        let azimuth = TAU * angle_increment * i as f32;
+        let incline = (1.0 - 2.0 * (offset_point / points as f32)).acos();
+        let azimuth = TAU * angle_increment * offset_point;
 
         let direction = Vec3::new(
             incline.sin() * azimuth.sin(),
