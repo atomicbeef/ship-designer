@@ -16,7 +16,7 @@ fn send_player_connected(
     ship_query: Query<(Entity, &NetworkId, &Transform), &Ship>,
     mut player_connected_reader: EventReader<PlayerConnected>,
     player_id_query: Query<&PlayerId>,
-    player_query: Query<(&PlayerId, &PlayerName)>,
+    player_query: Query<(&PlayerId, &PlayerName, &Transform)>,
     mut server_state: NonSendMut<ServerState>,
     parts: Res<Parts>,
     part_query: Query<(&PartHandle, &Transform, &NetworkId)>,
@@ -28,17 +28,19 @@ fn send_player_connected(
             let player_connected_packet = Packet::from(player_connected);
             
             for &player_id in player_id_query.iter() {
-                server_state.send_to_player(
-                    player_id,
-                    (&player_connected_packet).into(),
-                    Channel::PlayerConnectionEvents.into(),
-                    SendMode::Reliable
-                );
+                if player_id != player_connected.id {
+                    server_state.send_to_player(
+                        player_id,
+                        (&player_connected_packet).into(),
+                        Channel::PlayerConnectionEvents.into(),
+                        SendMode::Reliable
+                    );
+                }
             }
 
             // Send the current state of the world to the new player
-            let players: Vec<(PlayerId, PlayerName)> = player_query.iter()
-                .map(|(player_id, player_name)| (*player_id, player_name.clone()))
+            let players: Vec<(PlayerId, PlayerName, Transform)> = player_query.iter()
+                .map(|(player_id, player_name, transform)| (*player_id, player_name.clone(), *transform))
                 .collect();
 
             let mut part_data: Vec<(PartNetworkRepr, CompactTransform, NetworkId)> = Vec::new();
@@ -63,6 +65,7 @@ fn send_player_connected(
             }
 
             let initial_state = InitialState {
+                player_id: player_connected.id,
                 players,
                 construct_network_id: *ship_network_id,
                 parts: part_data,

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use common::entity_lookup::lookup;
 use common::missile::SpawnMissileRequest;
+use common::player::PlayerBundle;
 use uflow::server::Event::*;
 use uflow::server::ErrorType;
 
@@ -33,14 +34,20 @@ pub fn process_packets(
                 state.add_client_address(player_id, address);
 
                 let player_name = PlayerName::from("Player".to_string());
+                let player_transform = Transform::from_translation(Vec3::splat(5.0));
 
                 client_connected_writer.send(PlayerConnected {
                     id: player_id,
                     name: player_name.clone(),
-                    pos: Vec3::splat(30.0),
+                    transform: player_transform,
                 });
 
-                commands.spawn(player_id).insert(player_name);
+                commands.spawn(PlayerBundle {
+                    id: player_id,
+                    name: player_name,
+                    transform: TransformBundle::from(player_transform),
+                    ..Default::default()
+                });
             },
             Disconnect(address) => {
                 if let Some(player_id) = state.player_id(address).cloned() {

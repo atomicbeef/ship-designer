@@ -11,7 +11,7 @@ use crate::compact_transform::CompactTransform;
 pub struct PlayerConnected {
     pub id: PlayerId,
     pub name: PlayerName,
-    pub pos: Vec3,
+    pub transform: Transform,
 }
 
 #[derive(IntoPacket, TryFromPacket)]
@@ -21,7 +21,8 @@ pub struct PlayerDisconnected(pub PlayerId);
 #[derive(IntoPacket, TryFromPacket)]
 #[PacketType(InitialState)]
 pub struct InitialState {
-    pub players: Vec<(PlayerId, PlayerName)>,
+    pub player_id: PlayerId,
+    pub players: Vec<(PlayerId, PlayerName, Transform)>,
     pub construct_network_id: NetworkId,
     pub parts: Vec<(PartNetworkRepr, CompactTransform, NetworkId)>,
     pub construct_transform: CompactTransform

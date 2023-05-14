@@ -3,7 +3,7 @@ use bevy_rapier3d::prelude::*;
 
 use common::entity_lookup::lookup;
 use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
-use common::player::{PlayerId, PlayerName};
+use common::player::{PlayerId, PlayerName, PlayerBundle, LocalPlayer};
 use common::part::{Parts, PartNetworkRepr, PartId};
 use common::ship::Ship;
 
@@ -13,13 +13,27 @@ use crate::part::meshes::PartMeshHandles;
 
 fn player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
-    mut commands: Commands
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for player_connected in player_connected_reader.iter() {
         info!("{} connected with ID {:?}!", player_connected.name, player_connected.id);
 
-        commands.spawn(player_connected.id)
-            .insert(player_connected.name.clone());
+        commands.spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule {
+                    radius: 0.5,
+                    depth: 2.0,
+                    ..Default::default()
+                })),
+            material: materials.add(Color::rgb(0.0, 1.0, 0.0).into()),
+            ..Default::default()
+        }).insert(PlayerBundle {
+            id: player_connected.id,
+            name: player_connected.name.clone(),
+            transform: TransformBundle::from_transform(player_connected.transform),
+            ..Default::default()
+        });
     }
 }
 
@@ -42,13 +56,31 @@ fn initial_state_setup(
     mut commands: Commands,
     mut mesh_handles: ResMut<PartMeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<BuildingMaterial>>,
+    mut standard_materials: ResMut<Assets<StandardMaterial>>,
+    mut building_materials: ResMut<Assets<BuildingMaterial>>,
     mut initial_state_reader: EventReader<InitialState>,
     mut parts: ResMut<Parts>
 ) {
     for initial_state in initial_state_reader.iter() {
-        for (id, name) in initial_state.players.iter() {
-            commands.spawn(*id).insert(name.clone());
+        for (id, name, transform) in initial_state.players.iter() {
+            let player = commands.spawn(PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Capsule {
+                        radius: 0.5,
+                        depth: 2.0,
+                        ..Default::default()
+                    })),
+                material: standard_materials.add(Color::rgb(0.0, 1.0, 0.0).into()),
+                ..Default::default()
+            }).insert(PlayerBundle {
+                id: *id,
+                name: name.clone(),
+                transform: TransformBundle::from_transform(*transform),
+                ..Default::default()
+            }).id();
+
+            if *id == initial_state.player_id {
+                commands.entity(player).insert(LocalPlayer);
+            }
         }
 
         let construct = commands.spawn(RigidBody::Dynamic)
@@ -74,7 +106,7 @@ fn initial_state_setup(
                 &mut commands,
                 &mut mesh_handles,
                 &mut meshes,
-                &mut materials,
+                &mut building_materials,
                 &parts,
                 part_handle,
                 Transform::from(*transform),

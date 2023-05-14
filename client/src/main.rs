@@ -81,6 +81,8 @@ fn main() {
         .add_system(update_intersections.in_base_set(CoreSet::First))
         .register_type::<common::part::PartId>()
         .register_type::<common::part::PartHandle>()
+        .register_type::<common::player::PlayerId>()
+        .register_type::<common::player::PlayerName>()
         .run();
 }
 

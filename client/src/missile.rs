@@ -51,21 +51,18 @@ fn spawn_missiles(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for spawn_event in spawn_event_reader.iter() {
-        commands.spawn(
-            MissileBundle {
-                missile: Missile::new(5.0),
-                network_id: spawn_event.network_id,
-                transform: TransformBundle::from_transform(spawn_event.transform.into()),
-                velocity: Velocity::linear(spawn_event.velocity),
-                collider: Collider::cuboid(0.25, 0.25, 0.25),
-                ..Default::default()
-            })
-            .insert(PbrBundle {
-                mesh: meshes.add(Mesh::from(Cube::new(0.5))),
-                material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
-                transform: Transform::from(spawn_event.transform),
-                ..Default::default()
-            });
+        commands.spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(Cube::new(0.5))),
+            material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
+            ..Default::default()
+        }).insert(MissileBundle {
+            missile: Missile::new(5.0),
+            network_id: spawn_event.network_id,
+            transform: TransformBundle::from_transform(spawn_event.transform.into()),
+            velocity: Velocity::linear(spawn_event.velocity),
+            collider: Collider::cuboid(0.25, 0.25, 0.25),
+            ..Default::default()
+        });
     }
 }
 
