@@ -257,11 +257,13 @@ pub struct ServerPartPlugin;
 
 impl Plugin for ServerPartPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(confirm_place_part_requests)
-            .add_system(send_place_part_commands.after(confirm_place_part_requests))
-            .add_system(confirm_delete_part_requests)
-            .add_system(send_delete_part_commands.after(confirm_delete_part_requests))
-            .add_system(send_voxel_updates)
-            .add_system(regenerate_colliders);
+        app.add_systems((
+            confirm_place_part_requests,
+            send_place_part_commands.after(confirm_place_part_requests),
+            confirm_delete_part_requests,
+            send_delete_part_commands.after(confirm_delete_part_requests),
+            send_voxel_updates,
+            regenerate_colliders,
+        ).in_schedule(CoreSchedule::FixedUpdate));
     }
 }

@@ -249,9 +249,11 @@ pub struct ServerMissilePlugin;
 
 impl Plugin for ServerMissilePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(spawn_missiles)
-            .add_system(send_spawn_missile_commands.after(spawn_missiles))
-            .add_system(explode_missiles)
-            .add_system(send_explode_missile_commands.after(explode_missiles));
+        app.add_systems((
+            spawn_missiles,
+            send_spawn_missile_commands.after(spawn_missiles),
+            explode_missiles,
+            send_explode_missile_commands.after(explode_missiles),
+        ).in_schedule(CoreSchedule::FixedUpdate));
     }
 }

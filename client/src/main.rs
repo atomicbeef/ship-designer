@@ -6,7 +6,10 @@ use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_prototype_debug_lines::DebugLinesPlugin;
 use bevy_rapier3d::prelude::*;
+use common::PHYSICS_TIMESTEP;
+use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule};
 use common::missile::MissilePlugin;
+use fixed_input::{FixedInputPlugin, FixedInputSystem};
 use missile::ClientMissilePlugin;
 use raycast_selection::{update_intersections, SelectionSource};
 use uflow::client::Client;
@@ -19,10 +22,12 @@ mod building;
 mod building_material;
 mod camera;
 mod connection_state;
+mod fixed_input;
 mod missile;
 mod part;
 mod packet_handling;
 mod player_connection;
+mod player_movement;
 mod raycast_selection;
 mod settings;
 
@@ -47,8 +52,17 @@ fn main() {
 
     let connection_state = ConnectionState::new(client);
 
-    App::new()
-        .insert_resource(Msaa::default())
+    let rapier_config = RapierConfiguration {
+        timestep_mode: TimestepMode::Fixed {
+            dt: PHYSICS_TIMESTEP,
+            substeps: 1,
+        },
+        ..Default::default()
+    };
+
+    let mut app = App::new();
+    
+    app.insert_resource(Msaa::default())
         .insert_resource(settings::Settings::default())
         .add_plugins(
             DefaultPlugins.set(LogPlugin {
@@ -60,6 +74,8 @@ fn main() {
                 ..default()
             })
         )
+        .setup_fixed_timestep_schedule()
+        .add_plugin(FixedInputPlugin)
         .add_plugin(FreeCameraPlugin)
         .add_plugin(BuildingPlugin)
         .add_plugin(PlayerConnectionPlugin)
@@ -73,12 +89,33 @@ fn main() {
         .add_system(disconnect_on_esc)
         .add_system(disconnect_on_window_close)
         .add_plugin(WorldInspectorPlugin::new())
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default().with_default_system_setup(false))
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackend)
+                .in_base_set(PhysicsSet::SyncBackend)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackendFlush)
+                .in_base_set(PhysicsSet::SyncBackendFlush)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::StepSimulation)
+                .in_base_set(PhysicsSet::StepSimulation)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::Writeback)
+                .in_base_set(PhysicsSet::Writeback)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
         .add_plugin(RapierDebugRenderPlugin::default())
-        .insert_resource(FixedTime::new(Duration::from_millis(16)))
+        .insert_resource(rapier_config)
+        .insert_resource(FixedTime::new(Duration::from_secs_f64(1.0 / 60.0)))
         .insert_resource(connection_state)
-        .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))
-        .add_system(update_intersections.in_base_set(CoreSet::First))
+        .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate).in_base_set(FixedUpdateSet::PreUpdate))
+        .add_system(update_intersections.in_base_set(FixedUpdateSet::PreUpdate).after(FixedInputSystem))
         .register_type::<common::part::PartId>()
         .register_type::<common::part::PartHandle>()
         .register_type::<common::player::PlayerId>()

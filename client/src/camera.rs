@@ -1,8 +1,8 @@
 use bevy::ecs::event::EventReader;
-use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 
+use crate::fixed_input::{FixedInput, FixedMouseMotion};
 use crate::settings::Settings;
 
 #[derive(Default, Resource)]
@@ -16,8 +16,7 @@ pub struct FreeCamera;
 
 // Handle translating the camera's position based on keyboard input
 fn camera_move(
-    keys: Res<Input<KeyCode>>,
-    time: Res<Time>,
+    keys: Res<FixedInput<KeyCode>>,
     settings: Res<Settings>,
     mut query: Query<&mut Transform, With<FreeCamera>>
 ) {
@@ -38,12 +37,12 @@ fn camera_move(
 
         velocity = velocity.normalize_or_zero();
 
-        transform.translation += velocity * time.delta_seconds() * settings.camera_speed;
+        transform.translation += velocity * settings.camera_speed;
     }
 }
 
 fn camera_rotate(
-    mut motion_evr: EventReader<MouseMotion>,
+    mut motion_evr: EventReader<FixedMouseMotion>,
     primary_window_query: Query<&Window, With<PrimaryWindow>>,
     mut state: ResMut<Orientation>,
     settings: Res<Settings>,
@@ -68,7 +67,7 @@ fn camera_rotate(
 }
 
 fn cursor_grab(
-    mouse_button_input: Res<Input<MouseButton>>,
+    mouse_button_input: Res<FixedInput<MouseButton>>,
     mut primary_window_query: Query<&mut Window, With<PrimaryWindow>>,
 ) {
     let primary_window = primary_window_query.get_single_mut();
@@ -95,8 +94,10 @@ pub struct FreeCameraPlugin;
 impl Plugin for FreeCameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Orientation>()
-            .add_system(camera_move)
-            .add_system(camera_rotate)
-            .add_system(cursor_grab);
+            .add_systems((
+                camera_move,
+                camera_rotate,
+                cursor_grab
+            ).in_schedule(CoreSchedule::FixedUpdate));
     }
 }

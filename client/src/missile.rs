@@ -9,10 +9,10 @@ use common::missile::{SpawnMissileRequest, SpawnMissileCommand, MissileBundle, E
 use packets::Packet; 
 use common::channels::Channel;
 
-use crate::connection_state::ConnectionState;
+use crate::{connection_state::ConnectionState, fixed_input::FixedInput};
 
 fn request_spawn_missiles(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<FixedInput<KeyCode>>,
     camera_query: Query<&GlobalTransform, With<Camera>>,
     mut spawn_event_writer: EventWriter<SpawnMissileRequest>,
 ) {
@@ -82,9 +82,11 @@ pub struct ClientMissilePlugin;
 
 impl Plugin for ClientMissilePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(spawn_missiles)
-            .add_system(request_spawn_missiles)
-            .add_system(send_spawn_missile_requests)
-            .add_system(explode_missiles);
+        app.add_systems((
+            spawn_missiles,
+            request_spawn_missiles,
+            send_spawn_missile_requests,
+            explode_missiles,
+        ).in_schedule(CoreSchedule::FixedUpdate));
     }
 }

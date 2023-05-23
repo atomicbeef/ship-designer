@@ -14,6 +14,8 @@ use colliders::{RegenerateColliders, remove_unused_colliders};
 use materials::Material;
 use packets_derive::{PacketSerialize, PacketDeserialize};
 
+use crate::fixed_update::AddFixedEvent;
+
 use self::colliders::PartCollider;
 
 pub mod colliders;
@@ -363,14 +365,16 @@ impl Plugin for PartPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Parts::new())
             .insert_resource(materials::MaterialResistances::new())
-            .add_event::<PlacePartRequest>()
-            .add_event::<PlacePartCommand>()
-            .add_event::<DeletePartRequest>()
-            .add_event::<DeletePartCommand>()
-            .add_event::<VoxelUpdate>()
-            .add_event::<FreedParts>()
-            .add_event::<RegenerateColliders>()
-            .add_system(free_parts)
-            .add_system(remove_unused_colliders);
+            .add_fixed_event::<PlacePartRequest>()
+            .add_fixed_event::<PlacePartCommand>()
+            .add_fixed_event::<DeletePartRequest>()
+            .add_fixed_event::<DeletePartCommand>()
+            .add_fixed_event::<VoxelUpdate>()
+            .add_fixed_event::<FreedParts>()
+            .add_fixed_event::<RegenerateColliders>()
+            .add_systems((
+                free_parts,
+                remove_unused_colliders
+            ).in_schedule(CoreSchedule::FixedUpdate));
     }
 }

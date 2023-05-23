@@ -6,6 +6,8 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
+use common::PHYSICS_TIMESTEP;
+use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule};
 use common::missile::MissilePlugin;
 use common::ship::Ship;
 use bevy_rapier3d::prelude::*;
@@ -29,6 +31,14 @@ use network_id_generator::NetworkIdGenerator;
 use crate::player_connection::PlayerConnectionPlugin;
 
 fn main() {
+    let rapier_config = RapierConfiguration {
+        timestep_mode: TimestepMode::Fixed {
+            dt: PHYSICS_TIMESTEP,
+            substeps: 1,
+        },
+        ..Default::default()
+    };
+
     App::new()
         .add_plugins(MinimalPlugins)
         .add_plugin(LogPlugin {
@@ -41,17 +51,39 @@ fn main() {
         .add_plugin(AssetPlugin::default())
         .add_plugin(MeshPlugin)
         .add_plugin(ScenePlugin)
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .setup_fixed_timestep_schedule()
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default().with_default_system_setup(false))
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackend)
+                .in_base_set(PhysicsSet::SyncBackend)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackendFlush)
+                .in_base_set(PhysicsSet::SyncBackendFlush)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::StepSimulation)
+                .in_base_set(PhysicsSet::StepSimulation)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
+        .add_systems(
+            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::Writeback)
+                .in_base_set(PhysicsSet::Writeback)
+                .in_schedule(CoreSchedule::FixedUpdate)
+        )
         .add_plugin(PartPlugin)
         .add_plugin(ServerPartPlugin)
         .add_plugin(PlayerConnectionPlugin)
         .add_plugin(MissilePlugin)
         .add_plugin(ServerMissilePlugin)
-        .insert_resource(FixedTime::new(Duration::from_millis(16)))
+        .insert_resource(rapier_config)
+        .insert_resource(FixedTime::new(Duration::from_secs_f64(1.0 / 60.0)))
         .insert_resource(NetworkIdGenerator::new())
         .add_startup_system(setup_server)
         .add_startup_system(setup)
-        .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate))
+        .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate).in_base_set(FixedUpdateSet::PreUpdate))
         .run();
 }
 

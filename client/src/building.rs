@@ -12,6 +12,7 @@ use common::part::materials::Material;
 use common::part::{PartHandle, Parts, PartId, VOXEL_SIZE};
 
 use crate::building_material::BuildingMaterial;
+use crate::fixed_input::FixedInput;
 use crate::part::meshes::mesh_generation::RegeneratePartMesh;
 use crate::raycast_selection::SelectionSource;
 
@@ -88,7 +89,7 @@ fn move_build_marker(
 
 fn rotate_build_marker(
     mut marker_query: Query<&mut BuildMarkerOrientation, With<BuildMarker>>,
-    keys: Res<Input<KeyCode>>
+    keys: Res<FixedInput<KeyCode>>
 ) {
     let mut marker_orientation = match marker_query.iter_mut().next() {
         Some(transform) => transform,
@@ -121,8 +122,8 @@ fn rotate_build_marker(
 }
 
 fn create_build_request_events(
-    mouse_buttons: Res<Input<MouseButton>>,
-    keys: Res<Input<KeyCode>>,
+    mouse_buttons: Res<FixedInput<MouseButton>>,
+    keys: Res<FixedInput<KeyCode>>,
     mut place_part_request_writer: EventWriter<PlacePartRequest>,
     mut delete_part_request_writer: EventWriter<DeletePartRequest>,
     selection_source_query: Query<&SelectionSource>,
@@ -214,12 +215,10 @@ pub struct BuildingPlugin;
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MaterialPlugin::<BuildingMaterial>::default())
-            .add_systems(
-                (
-                    move_build_marker,
-                    rotate_build_marker,
-                    create_build_request_events
-                ).chain()
-            );
+            .add_systems((
+                move_build_marker,
+                rotate_build_marker,
+                create_build_request_events
+            ).chain().in_schedule(CoreSchedule::FixedUpdate));
     }
 }

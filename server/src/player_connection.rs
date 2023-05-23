@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::fixed_update::AddFixedEvent;
 use common::ship::Ship;
 use uflow::SendMode;
 
@@ -108,9 +109,11 @@ pub struct PlayerConnectionPlugin;
 
 impl Plugin for PlayerConnectionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<PlayerConnected>()
-            .add_event::<PlayerDisconnected>()
-            .add_system(send_player_connected)
-            .add_system(send_player_disconnected);
+        app.add_fixed_event::<PlayerConnected>()
+            .add_fixed_event::<PlayerDisconnected>()
+            .add_systems((
+                send_player_connected,
+                send_player_disconnected,
+            ).in_schedule(CoreSchedule::FixedUpdate));
     }
 }

@@ -10,8 +10,8 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            mouse_sensitivity: 0.0002,
-            camera_speed: 15.0,
+            mouse_sensitivity: 0.00025,
+            camera_speed: 1.0,
             fullscreen: false,
         }
     }
