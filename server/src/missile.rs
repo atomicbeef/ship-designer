@@ -33,7 +33,7 @@ fn spawn_missiles(
             velocity: Velocity::linear(spawn_event.velocity),
             collider: Collider::cuboid(0.25, 0.25, 0.25),
             ..Default::default()
-        });
+        }).insert(ActiveEvents::COLLISION_EVENTS);
 
         spawn_command_writer.send(SpawnMissileCommand {
             transform: spawn_event.transform, 
@@ -66,8 +66,9 @@ fn explode_missiles(
     rapier_context: Res<RapierContext>,
     material_resistances: Res<MaterialResistances>,
     mut commands: Commands,
+    mut collision_events: EventReader<CollisionEvent>,
     sensor_query: Query<&Sensor>,
-    missile_query: Query<(Entity, &Missile)>,
+    missile_query: Query<&Missile>,
     part_collider_query: Query<&PartCollider>,
     mut part_query_set: ParamSet<(
         Query<(&GlobalTransform, &mut PartHandle)>,
@@ -85,12 +86,26 @@ fn explode_missiles(
     let mut modified_parts = HashSet::new();
     let mut deleted_parts = HashSet::new();
 
-    for (missile_entity, missile) in missile_query.iter() {
-        if rapier_context.intersections_with(missile_entity)
-            .filter(|&(e1, e2, _)| sensor_query.get(e1).is_ok() != sensor_query.get(e2).is_ok())
-            .next()
-            .is_some()
-        {
+    let mut exploded_missile_entities: HashSet<Entity> = HashSet::new();
+
+    for collision_event in collision_events.iter() {
+        if let CollisionEvent::Started(e1, e2, _) = collision_event {
+            if exploded_missile_entities.contains(e1) || exploded_missile_entities.contains(e2) {
+                continue;
+            }
+
+            if sensor_query.get(*e1).is_ok() == sensor_query.get(*e2).is_ok() {
+                continue;
+            }
+
+            let (missile_entity, missile) = match missile_query.get(*e1) {
+                Ok(missile) => (*e1, missile),
+                Err(_) => match missile_query.get(*e2) {
+                    Ok(missile) => (*e2, missile),
+                    Err(_) => continue,
+                },
+            };
+
             affected_parts.extend(explode_missile(
                 missile_entity,
                 missile.power,
@@ -106,8 +121,9 @@ fn explode_missiles(
             explode_missile_command_writer.send(ExplodeMissileCommand { 
                 network_id,
                 transform: global_transform_query.get(missile_entity).copied().unwrap().into()
-             });
+            });
 
+            exploded_missile_entities.insert(missile_entity);
             commands.entity(missile_entity).despawn();
         }
     }
