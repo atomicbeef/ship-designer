@@ -44,3 +44,22 @@ impl MaterialResistances {
         self.0.get(&material).copied().unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use packets::{Packet, PacketSerialize, PacketDeserialize, PacketType};
+
+    use crate::part::materials::Material;
+
+    #[test]
+    fn material_serialize_deserialize() {
+        let mut packet = Packet::new(PacketType::VoxelUpdate);
+
+        let x = Material::Aluminum;
+        x.serialize(&mut packet);
+
+        let y = Material::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+}

@@ -67,7 +67,7 @@ impl From<VoxelPos> for Vec3 {
     }
 }
 
-#[derive(Clone, PacketSerialize, PacketDeserialize)]
+#[derive(Debug, Clone, PacketSerialize, PacketDeserialize, PartialEq)]
 pub struct Part {
     width: u8,
     height: u8,
@@ -186,6 +186,7 @@ impl Drop for PartHandle {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum PartNetworkRepr {
     Predefined(PartId),
     Child(Part)
@@ -376,5 +377,24 @@ impl Plugin for PartPlugin {
                 free_parts,
                 remove_unused_colliders
             ).in_schedule(CoreSchedule::FixedUpdate));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use packets::{Packet, PacketSerialize, PacketDeserialize, PacketType};
+
+    use crate::part::PartNetworkRepr;
+
+    #[test]
+    fn part_network_repr_serialize_deserialize() {
+        let mut packet = Packet::new(PacketType::VoxelUpdate);
+
+        let x = PartNetworkRepr::Predefined(0.into());
+        x.serialize(&mut packet);
+
+        let y = PartNetworkRepr::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
     }
 }
