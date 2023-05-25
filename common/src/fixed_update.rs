@@ -7,10 +7,13 @@ use bevy_rapier3d::prelude::*;
 #[system_set(base)]
 pub enum FixedUpdateSet {
     PreUpdate,
+    PreUpdateFlush,
     Update,
     UpdateFlush,
     PostUpdate,
+    PostUpdateFlush,
     Last,
+    LastFlush,
 }
 
 // A set for `propagate_transforms` to mark it as ambiguous with `sync_simple_transforms`.
@@ -27,6 +30,7 @@ impl SetupFixedTimeStepSchedule for App {
         self.edit_schedule(CoreSchedule::FixedUpdate, |schedule| {
             schedule.configure_sets((
                 FixedUpdateSet::PreUpdate,
+                FixedUpdateSet::PreUpdateFlush,
                 FixedUpdateSet::Update,
                 FixedUpdateSet::UpdateFlush,
                 PhysicsSet::SyncBackend,
@@ -34,7 +38,9 @@ impl SetupFixedTimeStepSchedule for App {
                 PhysicsSet::StepSimulation,
                 PhysicsSet::Writeback,
                 FixedUpdateSet::PostUpdate,
-                FixedUpdateSet::Last
+                FixedUpdateSet::PostUpdateFlush,
+                FixedUpdateSet::Last,
+                FixedUpdateSet::LastFlush,
             ).chain());
 
             schedule.configure_set(TransformSystem::TransformPropagate.in_base_set(FixedUpdateSet::PostUpdate));
@@ -42,7 +48,10 @@ impl SetupFixedTimeStepSchedule for App {
     
             schedule.set_default_base_set(FixedUpdateSet::Update);
     
+            schedule.add_system(apply_system_buffers.in_base_set(FixedUpdateSet::PreUpdateFlush));
             schedule.add_system(apply_system_buffers.in_base_set(FixedUpdateSet::UpdateFlush));
+            schedule.add_system(apply_system_buffers.in_base_set(FixedUpdateSet::PostUpdateFlush));
+            schedule.add_system(apply_system_buffers.in_base_set(FixedUpdateSet::LastFlush));
 
             schedule.add_system(sync_simple_transforms.in_set(TransformSystem::TransformPropagate)
                 .ambiguous_with(PropagateTransformsSet)

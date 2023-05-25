@@ -11,6 +11,7 @@ use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule};
 use common::missile::MissilePlugin;
 use fixed_input::{FixedInputPlugin, FixedInputSystem};
 use missile::ClientMissilePlugin;
+use player_controller::PlayerControllerPlugin;
 use raycast_selection::{update_intersections, SelectionSource};
 use uflow::client::Client;
 use uflow::EndpointConfig;
@@ -27,7 +28,7 @@ mod missile;
 mod part;
 mod packet_handling;
 mod player_connection;
-mod player_movement;
+mod player_controller;
 mod raycast_selection;
 mod settings;
 
@@ -57,6 +58,7 @@ fn main() {
             dt: PHYSICS_TIMESTEP,
             substeps: 1,
         },
+        gravity: Vec3::default(),
         ..Default::default()
     };
 
@@ -81,6 +83,7 @@ fn main() {
         .add_plugin(PlayerConnectionPlugin)
         .add_plugin(PartPlugin)
         .add_plugin(ClientPartPlugin)
+        .add_plugin(PlayerControllerPlugin)
         .add_plugin(MissilePlugin)
         .add_plugin(ClientMissilePlugin)
         .add_plugin(DebugLinesPlugin::default())

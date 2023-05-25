@@ -36,6 +36,7 @@ fn main() {
             dt: PHYSICS_TIMESTEP,
             substeps: 1,
         },
+        gravity: Vec3::default(),
         ..Default::default()
     };
 
@@ -124,7 +125,6 @@ fn setup(
             scale: Vec3::splat(1.0)
         }))
         .insert(Velocity::default())
-        .insert(GravityScale(0.0))
         .insert(network_id_generator.generate())
         .insert(Ship)
         .id();

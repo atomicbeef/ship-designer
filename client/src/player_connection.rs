@@ -11,6 +11,7 @@ use common::ship::Ship;
 use crate::part::spawn_part;
 use crate::building_material::BuildingMaterial;
 use crate::part::meshes::PartMeshHandles;
+use crate::player_controller::ControlledPlayer;
 
 fn player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
@@ -80,7 +81,7 @@ fn initial_state_setup(
             }).id();
 
             if *id == initial_state.player_id {
-                commands.entity(player).insert(LocalPlayer);
+                commands.entity(player).insert(LocalPlayer).insert(ControlledPlayer);
             }
         }
 
@@ -88,7 +89,6 @@ fn initial_state_setup(
             .insert(VisibilityBundle::default())
             .insert(TransformBundle::from_transform(Transform::from(initial_state.construct_transform)))
             .insert(Velocity::default())
-            .insert(GravityScale(0.0))
             .insert(initial_state.construct_network_id)
             .insert(Ship)
             .id();

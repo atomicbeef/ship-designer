@@ -28,7 +28,6 @@ pub struct MissileBundle {
     pub rigid_body: RigidBody,
     pub velocity: Velocity,
     pub ccd: Ccd,
-    pub gravity_scale: GravityScale,
 }
 
 impl Default for MissileBundle {
@@ -42,7 +41,6 @@ impl Default for MissileBundle {
             rigid_body: RigidBody::Dynamic,
             velocity: Velocity::default(),
             ccd: Ccd::enabled(),
-            gravity_scale: GravityScale(0.0),
         }
     }
 }

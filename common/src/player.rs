@@ -39,7 +39,8 @@ pub struct PlayerBundle {
     pub transform: TransformBundle,
     pub collider: Collider,
     pub rigid_body: RigidBody,
-    pub gravity_scale: GravityScale,
+    pub damping: Damping,
+    pub external_impulse: ExternalImpulse,
 }
 
 impl Default for PlayerBundle {
@@ -50,7 +51,8 @@ impl Default for PlayerBundle {
             transform: TransformBundle::default(),
             collider: Collider::capsule(Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, -1.0, 0.0), 0.5),
             rigid_body: RigidBody::Dynamic,
-            gravity_scale: GravityScale(0.0),
+            damping: Damping { linear_damping: 2.0, angular_damping: 2.0 },
+            external_impulse: ExternalImpulse::default(),
         }
     }
 }
