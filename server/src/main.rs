@@ -1,17 +1,10 @@
-use std::time::Duration;
-
-use bevy::asset::AssetPlugin;
-use bevy::diagnostic::DiagnosticsPlugin;
-use bevy::log::{Level, LogPlugin};
+use app_setup::{setup_hardcoded_parts, SetupBevyPlugins, SetupRapier, SetupServerSpecific};
 use bevy::prelude::*;
-use bevy::render::mesh::MeshPlugin;
-use bevy::scene::ScenePlugin;
-use common::PHYSICS_TIMESTEP;
 use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule};
-use common::missile::MissilePlugin;
 use common::ship::Ship;
 use bevy_rapier3d::prelude::*;
 
+mod app_setup;
 mod missile;
 mod network_id_generator;
 mod packet_handling;
@@ -19,71 +12,21 @@ mod part;
 mod player_connection;
 mod server_state;
 
-use common::part::{Parts, PartId, PartPlugin};
-use common::predefined_parts::add_hardcoded_parts;
+use common::part::{Parts, PartId};
 
-use missile::ServerMissilePlugin;
 use packet_handling::process_packets;
-use part::{ServerPartPlugin, spawn_part};
+use part::spawn_part;
 use server_state::ServerState;
 use network_id_generator::NetworkIdGenerator;
 
-use crate::player_connection::PlayerConnectionPlugin;
-
 fn main() {
-    let rapier_config = RapierConfiguration {
-        timestep_mode: TimestepMode::Fixed {
-            dt: PHYSICS_TIMESTEP,
-            substeps: 1,
-        },
-        gravity: Vec3::default(),
-        ..Default::default()
-    };
-
     App::new()
-        .add_plugins(MinimalPlugins)
-        .add_plugin(LogPlugin {
-            level: Level::DEBUG,
-            filter: String::new()
-        })
-        .add_plugin(TransformPlugin)
-        .add_plugin(HierarchyPlugin)
-        .add_plugin(DiagnosticsPlugin)
-        .add_plugin(AssetPlugin::default())
-        .add_plugin(MeshPlugin)
-        .add_plugin(ScenePlugin)
+        .setup_bevy_plugins()
         .setup_fixed_timestep_schedule()
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default().with_default_system_setup(false))
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackend)
-                .in_base_set(PhysicsSet::SyncBackend)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackendFlush)
-                .in_base_set(PhysicsSet::SyncBackendFlush)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::StepSimulation)
-                .in_base_set(PhysicsSet::StepSimulation)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::Writeback)
-                .in_base_set(PhysicsSet::Writeback)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_plugin(PartPlugin)
-        .add_plugin(ServerPartPlugin)
-        .add_plugin(PlayerConnectionPlugin)
-        .add_plugin(MissilePlugin)
-        .add_plugin(ServerMissilePlugin)
-        .insert_resource(rapier_config)
-        .insert_resource(FixedTime::new(Duration::from_secs_f64(1.0 / 60.0)))
-        .insert_resource(NetworkIdGenerator::new())
-        .add_startup_system(setup_server)
-        .add_startup_system(setup)
+        .setup_rapier()
+        .setup_server_specific()
+        .add_startup_system(setup_server.after(setup_hardcoded_parts))
+        .add_startup_system(setup.after(setup_hardcoded_parts))
         .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate).in_base_set(FixedUpdateSet::PreUpdate))
         .run();
 }
@@ -113,8 +56,6 @@ fn setup(
     mut network_id_generator: ResMut<NetworkIdGenerator>,
     mut parts: ResMut<Parts>
 ) {
-    add_hardcoded_parts(&mut parts);
-
     let construct = commands.spawn(RigidBody::Dynamic)
         .insert(VisibilityBundle::default())
         .insert(TransformBundle::from_transform(Transform {
