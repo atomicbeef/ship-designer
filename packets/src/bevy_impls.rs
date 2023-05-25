@@ -44,3 +44,51 @@ impl PacketDeserialize for Transform {
         Ok(Transform { translation, rotation, scale })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bevy::prelude::{Vec3, Quat, Transform};
+
+    use crate::{Packet, PacketSerialize, PacketDeserialize};
+    use crate::PacketType::PlayerConnected;
+
+    #[test]
+    fn vec3_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x = Vec3::new(1.0, -5.0, 0.0);
+        x.serialize(&mut packet);
+
+        let y = Vec3::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn quat_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x = Quat::from_rotation_x(1.0);
+        x.serialize(&mut packet);
+
+        let y = Quat::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn transform_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x = Transform {
+            translation: Vec3::new(1.0, -5.0, 0.0),
+            rotation: Quat::from_rotation_x(1.0),
+            scale: Vec3::new(5.0, 1.25, 3.0)
+        };
+        x.serialize(&mut packet);
+
+        let y = Transform::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+}

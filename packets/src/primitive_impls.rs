@@ -192,3 +192,144 @@ impl<T: PacketDeserialize> PacketDeserialize for Option<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{Packet, PacketType::PlayerConnected, PacketSerialize, PacketDeserialize};
+
+    #[test]
+    fn u8_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x: u8 = 12;
+        x.serialize(&mut packet);
+
+        let y = u8::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn bool_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x = true;
+        x.serialize(&mut packet);
+
+        let y = bool::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn i16_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x: i16 = 12;
+        x.serialize(&mut packet);
+
+        let y = i16::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+    
+    #[test]
+    fn u16_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x: u16 = 12;
+        x.serialize(&mut packet);
+
+        let y = u16::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn u32_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x: u32 = 12;
+        x.serialize(&mut packet);
+
+        let y = u32::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn u64_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x: u64 = 12;
+        x.serialize(&mut packet);
+
+        let y = u64::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn string_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+
+        let x: String = "Test".to_string();
+        x.serialize(&mut packet);
+
+        let y = String::deserialize(&mut packet).unwrap();
+        
+        assert_eq!(x, y);
+    }
+
+    #[test]
+    fn f32_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+        
+        let x: f32 = 12.0;
+        x.serialize(&mut packet);
+
+        let y = f32::deserialize(&mut packet).unwrap();
+
+        assert_eq!(x.to_le_bytes(), y.to_le_bytes());
+    }
+
+    #[test]
+    fn slice_serialize_vec_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+        
+        let x = [1.0, 2.0, 3.0];
+        x.serialize(&mut packet);
+
+        let y: Vec<f32> = Vec::deserialize(&mut packet).unwrap();
+
+        for i in 0..x.len() {
+            assert_eq!(x[i].to_le_bytes(), y[i].to_le_bytes());
+        }
+    }
+
+    #[test]
+    fn vec_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+        
+        let x = vec![1.0, 2.0, 3.0];
+        x.serialize(&mut packet);
+
+        let y: Vec<f32> = Vec::deserialize(&mut packet).unwrap();
+
+        for i in 0..x.len() {
+            assert_eq!(x[i].to_le_bytes(), y[i].to_le_bytes());
+        }
+    }
+
+    #[test]
+    fn option_serialize_deserialize() {
+        let mut packet = Packet::new(PlayerConnected);
+        
+        let x = Some(1.0);
+        x.serialize(&mut packet);
+
+        let y: Option<f32> = Option::deserialize(&mut packet).unwrap();
+
+        assert_eq!(x.unwrap().to_le_bytes(), y.unwrap().to_le_bytes());
+    }
+}
