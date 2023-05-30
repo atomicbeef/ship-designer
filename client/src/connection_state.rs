@@ -4,7 +4,6 @@ use uflow::client::Client;
 #[derive(Resource)]
 pub struct ConnectionState {
     pub client: Client,
-    
 }
 
 impl ConnectionState {

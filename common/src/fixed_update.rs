@@ -3,6 +3,8 @@ use std::marker::PhantomData;
 use bevy::{prelude::*, transform::{systems::{sync_simple_transforms, propagate_transforms}, TransformSystem}};
 use bevy_rapier3d::prelude::*;
 
+use crate::PHYSICS_TIMESTEP;
+
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 #[system_set(base)]
 pub enum FixedUpdateSet {
@@ -15,6 +17,8 @@ pub enum FixedUpdateSet {
     Last,
     LastFlush,
 }
+
+pub struct NetworkSendSet;
 
 // A set for `propagate_transforms` to mark it as ambiguous with `sync_simple_transforms`.
 // Used instead of the `SystemTypeSet` as that would not allow multiple instances of the system.
@@ -58,6 +62,46 @@ impl SetupFixedTimeStepSchedule for App {
             );
             schedule.add_system(propagate_transforms.in_set(PropagateTransformsSet));
         })
+    }
+}
+
+pub trait SetupRapier {
+    fn setup_rapier(&mut self) -> &mut Self;
+}
+
+impl SetupRapier for App {
+    fn setup_rapier(&mut self) -> &mut Self {
+        let rapier_config = RapierConfiguration {
+            timestep_mode: TimestepMode::Fixed {
+                dt: PHYSICS_TIMESTEP,
+                substeps: 1,
+            },
+            gravity: Vec3::default(),
+            ..Default::default()
+        };
+    
+        self.add_plugin(RapierPhysicsPlugin::<NoUserData>::default().with_default_system_setup(false))
+            .add_systems(
+                RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackend)
+                    .in_base_set(PhysicsSet::SyncBackend)
+                    .in_schedule(CoreSchedule::FixedUpdate)
+            )
+            .add_systems(
+                RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackendFlush)
+                    .in_base_set(PhysicsSet::SyncBackendFlush)
+                    .in_schedule(CoreSchedule::FixedUpdate)
+            )
+            .add_systems(
+                RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::StepSimulation)
+                    .in_base_set(PhysicsSet::StepSimulation)
+                    .in_schedule(CoreSchedule::FixedUpdate)
+            )
+            .add_systems(
+                RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::Writeback)
+                    .in_base_set(PhysicsSet::Writeback)
+                    .in_schedule(CoreSchedule::FixedUpdate)
+            )
+            .insert_resource(rapier_config)
     }
 }
 

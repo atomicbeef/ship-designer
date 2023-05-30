@@ -85,7 +85,7 @@ impl Plugin for ClientMissilePlugin {
         app.add_systems((
             spawn_missiles,
             request_spawn_missiles,
-            send_spawn_missile_requests,
+            send_spawn_missile_requests.after(request_spawn_missiles),
             explode_missiles,
         ).in_schedule(CoreSchedule::FixedUpdate));
     }

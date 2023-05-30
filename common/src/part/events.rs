@@ -3,7 +3,7 @@ use packets_derive::{IntoPacket, TryFromPacket};
 use crate::part::{Material, PartId};
 use crate::compact_transform::CompactTransform;
 
-#[derive(Debug, IntoPacket, TryFromPacket)]
+#[derive(Clone, Debug, IntoPacket, TryFromPacket)]
 #[PacketType(PlacePart)]
 pub struct PlacePartRequest {
     pub part_id: PartId,
