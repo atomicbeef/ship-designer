@@ -36,6 +36,7 @@ impl SetupBevyPlugins for App {
             .add_plugin(ScenePlugin)
     }
 }
+
 pub trait SetupServerSpecific {
     fn setup_server_specific(&mut self) -> &mut Self;
 }

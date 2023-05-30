@@ -1,24 +1,19 @@
-use std::time::Duration;
-
+use app_setup::{SetupClientSpecific, setup_hardcoded_parts};
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_prototype_debug_lines::DebugLinesPlugin;
 use bevy_rapier3d::prelude::*;
-use common::PHYSICS_TIMESTEP;
-use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule};
-use common::missile::MissilePlugin;
-use fixed_input::{FixedInputPlugin, FixedInputSystem};
-use missile::ClientMissilePlugin;
-use player_controller::PlayerControllerPlugin;
+use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule, SetupRapier};
+use fixed_input::FixedInputSystem;
 use raycast_selection::{update_intersections, SelectionSource};
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
-use common::predefined_parts::add_hardcoded_parts;
-use common::part::{Parts, PartId, PartPlugin};
+use common::part::{Parts, PartId};
 
+mod app_setup;
 mod building;
 mod building_material;
 mod camera;
@@ -32,13 +27,10 @@ mod player_controller;
 mod raycast_selection;
 mod settings;
 
-use building::{BuildMarker, BuildMarkerOrientation, BuildingPlugin};
-use camera::{FreeCameraPlugin, FreeCamera};
+use building::{BuildMarker, BuildMarkerOrientation};
+use camera::FreeCamera;
 use connection_state::ConnectionState;
 use part::meshes::PartMeshHandles;
-use packet_handling::process_packets;
-use part::ClientPartPlugin;
-use player_connection::PlayerConnectionPlugin;
 
 fn main() {
     let server_address = "127.0.0.1:36756";
@@ -52,20 +44,8 @@ fn main() {
     let client = Client::connect(server_address, client_config).expect("Failed to connect to server!");
 
     let connection_state = ConnectionState::new(client);
-
-    let rapier_config = RapierConfiguration {
-        timestep_mode: TimestepMode::Fixed {
-            dt: PHYSICS_TIMESTEP,
-            substeps: 1,
-        },
-        gravity: Vec3::default(),
-        ..Default::default()
-    };
-
-    let mut app = App::new();
     
-    app.insert_resource(Msaa::default())
-        .insert_resource(settings::Settings::default())
+    App::new().insert_resource(Msaa::default())
         .add_plugins(
             DefaultPlugins.set(LogPlugin {
                 level: Level::DEBUG,
@@ -77,47 +57,16 @@ fn main() {
             })
         )
         .setup_fixed_timestep_schedule()
-        .add_plugin(FixedInputPlugin)
-        .add_plugin(FreeCameraPlugin)
-        .add_plugin(BuildingPlugin)
-        .add_plugin(PlayerConnectionPlugin)
-        .add_plugin(PartPlugin)
-        .add_plugin(ClientPartPlugin)
-        .add_plugin(PlayerControllerPlugin)
-        .add_plugin(MissilePlugin)
-        .add_plugin(ClientMissilePlugin)
+        .setup_rapier()
+        .add_plugin(RapierDebugRenderPlugin::default())
+        .setup_client_specific()
         .add_plugin(DebugLinesPlugin::default())
         .add_startup_system(set_window_title)
-        .add_startup_system(setup)
+        .add_startup_system(setup.after(setup_hardcoded_parts))
         .add_system(disconnect_on_esc)
         .add_system(disconnect_on_window_close)
         .add_plugin(WorldInspectorPlugin::new())
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default().with_default_system_setup(false))
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackend)
-                .in_base_set(PhysicsSet::SyncBackend)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackendFlush)
-                .in_base_set(PhysicsSet::SyncBackendFlush)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::StepSimulation)
-                .in_base_set(PhysicsSet::StepSimulation)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::Writeback)
-                .in_base_set(PhysicsSet::Writeback)
-                .in_schedule(CoreSchedule::FixedUpdate)
-        )
-        .add_plugin(RapierDebugRenderPlugin::default())
-        .insert_resource(rapier_config)
-        .insert_resource(FixedTime::new(Duration::from_secs_f64(1.0 / 60.0)))
         .insert_resource(connection_state)
-        .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate).in_base_set(FixedUpdateSet::PreUpdate))
         .add_system(update_intersections.in_base_set(FixedUpdateSet::PreUpdate).after(FixedInputSystem))
         .register_type::<common::part::PartId>()
         .register_type::<common::part::PartHandle>()
@@ -133,21 +82,12 @@ fn set_window_title(mut primary_window_query: Query<&mut Window, With<PrimaryWin
 }
 
 fn setup(
-    mut parts: ResMut<Parts>,
+    parts: Res<Parts>,
     mut mesh_handles: ResMut<PartMeshHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands
 ) {
-    let part_handles = add_hardcoded_parts(&mut parts);
-
-    for part_handle in part_handles {
-        let part = parts.get(&part_handle).unwrap();
-        let mesh = part::meshes::mesh_generation::generate_part_mesh(part);
-        let mesh_handle = meshes.add(mesh);
-        mesh_handles.add(part_handle.id(), mesh_handle);
-    }
-
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
