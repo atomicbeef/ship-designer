@@ -1,9 +1,12 @@
 use std::time::Duration;
 
-use bevy::{prelude::*, log::{LogPlugin, Level}};
+use bevy::prelude::*;
+use bevy::log::{LogPlugin, Level};
 
-use common::{fixed_update::{SetupFixedTimeStepSchedule, SetupRapier}, PHYSICS_TIMESTEP};
-use ship_designer_server::{app_setup::{SetupBevyPlugins, SetupServerSpecific}, server_state::ServerState};
+use common::fixed_update::{SetupFixedTimeStepSchedule, SetupRapier};
+use common::PHYSICS_TIMESTEP;
+use ship_designer_server::app_setup::{SetupBevyPlugins, SetupServerSpecific};
+use ship_designer_server::server_state::ServerState;
 
 fn setup_server(world: &mut World) {
     let server_config = uflow::server::Config {

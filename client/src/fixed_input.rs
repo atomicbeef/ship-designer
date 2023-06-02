@@ -71,7 +71,7 @@ fn add_fixed_input<T: Copy + Eq + Hash + Send + Sync + 'static>(app: &mut App) {
             .in_base_set(FixedUpdateSet::PreUpdate)
             .in_set(FixedInputSystem)
         )
-        .add_system(clear_fixed_input::<T>.in_base_set(CoreSet::Last));
+        .add_system(clear_fixed_input::<T>.in_base_set(CoreSet::First));
 }
 
 pub struct FixedInputPlugin;

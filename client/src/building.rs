@@ -13,8 +13,51 @@ use common::part::{PartHandle, Parts, PartId, VOXEL_SIZE};
 
 use crate::building_material::BuildingMaterial;
 use crate::fixed_input::FixedInput;
+use crate::part::meshes::{PartMeshHandles, get_mesh_or_generate};
 use crate::part::meshes::mesh_generation::RegeneratePartMesh;
 use crate::raycast_selection::SelectionSource;
+
+#[derive(Bundle)]
+pub struct BuildMarkerBundle {
+    pub marker: BuildMarker,
+    pub marker_orientation: BuildMarkerOrientation,
+    pub pbr_bundle: PbrBundle,
+    pub part_handle: PartHandle,
+    pub collider: Collider,
+    pub sensor: Sensor,
+}
+
+impl BuildMarkerBundle {
+    pub fn new(
+        part_id: PartId,
+        parts: &Parts,
+        mesh_handles: &mut PartMeshHandles,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<StandardMaterial>
+    ) -> Self {
+        let marker_part_handle = parts.get_handle(part_id);
+        let marker_part = parts.get(&marker_part_handle).unwrap();
+        // If we use exactly the part bounds, then we can't place parts next to each other
+        let marker_half_extents = marker_part.center() - Vec3::splat(0.01);
+
+        Self {
+            marker: BuildMarker,
+            marker_orientation: BuildMarkerOrientation(Quat::IDENTITY),
+            pbr_bundle: PbrBundle {
+                mesh: get_mesh_or_generate(marker_part_handle.id(), marker_part, mesh_handles, meshes),
+                material: materials.add(Color::rgba(0.25, 0.62, 0.26, 0.5).into()),
+                ..Default::default()
+            },
+            part_handle: marker_part_handle,
+            collider: Collider::cuboid(
+                marker_half_extents.x,
+                marker_half_extents.y,
+                marker_half_extents.z
+            ),
+            sensor: Sensor,
+        }
+    }
+}
 
 fn snap_to_grid(point: Vec3, snap_resolution: f32) -> Vec3 {
     // This extra rounding smoothes out any jittering

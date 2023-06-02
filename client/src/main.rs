@@ -1,36 +1,22 @@
-use app_setup::{SetupClientSpecific, setup_hardcoded_parts};
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_prototype_debug_lines::DebugLinesPlugin;
 use bevy_rapier3d::prelude::*;
-use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule, SetupRapier};
-use fixed_input::FixedInputSystem;
-use raycast_selection::{update_intersections, SelectionSource};
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
 use common::part::{Parts, PartId};
+use common::fixed_update::{FixedUpdateSet, SetupFixedTimeStepSchedule, SetupRapier};
 
-mod app_setup;
-mod building;
-mod building_material;
-mod camera;
-mod connection_state;
-mod fixed_input;
-mod missile;
-mod part;
-mod packet_handling;
-mod player_connection;
-mod player_controller;
-mod raycast_selection;
-mod settings;
-
-use building::{BuildMarker, BuildMarkerOrientation};
-use camera::FreeCamera;
-use connection_state::ConnectionState;
-use part::meshes::PartMeshHandles;
+use ship_designer_client::app_setup::{SetupClientSpecific, setup_hardcoded_parts};
+use ship_designer_client::fixed_input::FixedInputSystem;
+use ship_designer_client::raycast_selection::{update_intersections, SelectionSource};
+use ship_designer_client::building::BuildMarkerBundle;
+use ship_designer_client::camera::FreeCamera;
+use ship_designer_client::connection_state::ConnectionState;
+use ship_designer_client::part::meshes::PartMeshHandles;
 
 fn main() {
     let server_address = "127.0.0.1:36756";
@@ -95,25 +81,13 @@ fn setup(
     .insert(FreeCamera)
     .insert(SelectionSource::new());
 
-    let marker_part_handle = parts.get_handle(PartId::from(1));
-    let marker_part = parts.get(&marker_part_handle).unwrap();
-    // If we use exactly the part bounds, then we can't place parts next to each other
-    let marker_half_extents = marker_part.center() - Vec3::splat(0.01);
-
-    commands.spawn(BuildMarker)
-        .insert(BuildMarkerOrientation(Quat::IDENTITY))
-        .insert(PbrBundle {
-            mesh: part::meshes::get_mesh_or_generate(marker_part_handle.id(), marker_part, &mut mesh_handles, &mut meshes),
-            material: materials.add(Color::rgba(0.25, 0.62, 0.26, 0.5).into()),
-            ..Default::default()
-        })
-        .insert(marker_part_handle)
-        .insert(Collider::cuboid(
-            marker_half_extents.x,
-            marker_half_extents.y,
-            marker_half_extents.z
-        ))
-        .insert(Sensor);
+    commands.spawn(BuildMarkerBundle::new(
+        PartId::from(1),
+        &parts,
+        &mut mesh_handles,
+        &mut meshes,
+        &mut materials,
+    ));
 }
 
 fn disconnect_on_esc(
