@@ -14,7 +14,7 @@ use ship_designer_client::app_setup::{SetupClientSpecific, setup_hardcoded_parts
 use ship_designer_client::fixed_input::FixedInputSystem;
 use ship_designer_client::raycast_selection::{update_intersections, SelectionSource};
 use ship_designer_client::building::BuildMarkerBundle;
-use ship_designer_client::camera::FreeCamera;
+use ship_designer_client::free_camera::FreeCamera;
 use ship_designer_client::connection_state::ConnectionState;
 use ship_designer_client::part::meshes::PartMeshHandles;
 

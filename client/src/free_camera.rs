@@ -5,16 +5,9 @@ use bevy::window::{CursorGrabMode, PrimaryWindow};
 use crate::fixed_input::{FixedInput, FixedMouseMotion};
 use crate::settings::Settings;
 
-#[derive(Default, Resource)]
-struct Orientation {
-    pitch: f32,
-    yaw: f32,
-}
-
 #[derive(Component)]
 pub struct FreeCamera;
 
-// Handle translating the camera's position based on keyboard input
 fn camera_move(
     keys: Res<FixedInput<KeyCode>>,
     settings: Res<Settings>,
@@ -44,23 +37,23 @@ fn camera_move(
 fn camera_rotate(
     mut motion_evr: EventReader<FixedMouseMotion>,
     primary_window_query: Query<&Window, With<PrimaryWindow>>,
-    mut state: ResMut<Orientation>,
     settings: Res<Settings>,
-    mut query: Query<&mut Transform, With<FreeCamera>>
+    mut camera_query: Query<&mut Transform, With<FreeCamera>>
 ) {
     let primary_window = primary_window_query.get_single();
     if let Ok(window) = primary_window {
-        for mut transform in query.iter_mut() {
+        for mut transform in camera_query.iter_mut() {
             for ev in motion_evr.iter() {
                 match window.cursor.grab_mode {
                     CursorGrabMode::None => {},
                     CursorGrabMode::Confined | CursorGrabMode::Locked => {
-                        state.pitch -= (settings.mouse_sensitivity * ev.delta.y * window.height()).to_radians();
-                        state.yaw -= (settings.mouse_sensitivity * ev.delta.x * window.width()).to_radians();
+                        let pitch = (settings.mouse_sensitivity * ev.delta.y * window.height()).to_radians();
+                        let yaw = (settings.mouse_sensitivity * ev.delta.x * window.width()).to_radians();
+
+                        transform.rotate_local_x(-pitch);
+                        transform.rotate_y(-yaw);
                     }
                 }
-    
-                transform.rotation = Quat::from_axis_angle(Vec3::Y, state.yaw) * Quat::from_axis_angle(Vec3::X, state.pitch);
             }
         }
     }
@@ -93,11 +86,10 @@ pub struct FreeCameraPlugin;
 
 impl Plugin for FreeCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Orientation>()
-            .add_systems((
-                camera_move,
-                camera_rotate,
-                cursor_grab
-            ).in_schedule(CoreSchedule::FixedUpdate));
+        app.add_systems((
+            camera_move,
+            camera_rotate,
+            cursor_grab
+        ).in_schedule(CoreSchedule::FixedUpdate));
     }
 }

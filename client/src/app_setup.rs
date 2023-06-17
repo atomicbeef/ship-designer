@@ -9,7 +9,7 @@ use crate::part::meshes::PartMeshHandles;
 use crate::part::meshes::mesh_generation::generate_part_mesh;
 use crate::settings;
 use crate::fixed_input::FixedInputPlugin;
-use crate::camera::FreeCameraPlugin;
+use crate::free_camera::FreeCameraPlugin;
 use crate::building::BuildingPlugin;
 use crate::player_connection::PlayerConnectionPlugin;
 use crate::part::ClientPartPlugin;
