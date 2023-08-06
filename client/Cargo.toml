@@ -9,15 +9,14 @@ edition = "2021"
 common = { package = "ship-designer-common", path = "../common" }
 packets = { path = "../packets" }
 
-bevy_egui = "0.20"
-bevy-inspector-egui = "0.18"
+bevy_egui = "0.21"
+bevy-inspector-egui = "0.19"
 uflow = "0.7"
 num_enum = "0.6"
-bevy_rapier3d = { version = "0.21", features = [ "debug-render-3d", "simd-stable" ] }
-bevy_prototype_debug_lines = { version = "0.10", features = ["3d"] }
+bevy_rapier3d = { git = "https://github.com/dimforge/bevy_rapier.git", features = [ "debug-render-3d", "simd-stable" ] }
 
 [dependencies.bevy]
-version = "0.10"
+version = "0.11"
 default-features = false
 features = [
     "animation",

@@ -9,8 +9,8 @@ edition = "2021"
 packets = { path = "../packets" }
 packets-derive = { path = "../packets-derive" }
 
-bevy = { version = "0.10", default-features = false }
-bevy_rapier3d = { version = "0.21", features = [ "debug-render-3d", "simd-stable" ] }
+bevy = { version = "0.11", default-features = false }
+bevy_rapier3d = { git = "https://github.com/dimforge/bevy_rapier.git", features = [ "debug-render-3d", "simd-stable" ] }
 uflow = "0.7"
 num_enum = "0.6"
 crossbeam-channel = "0.5"
