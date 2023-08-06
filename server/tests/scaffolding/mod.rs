@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::log::{LogPlugin, Level};
 
-use common::fixed_update::{SetupFixedTimeStepSchedule, SetupRapier};
+use common::fixed_update::{SetupFixedTimeStepSchedule, SetupRapier, FixedUpdateSet};
 use common::PHYSICS_TIMESTEP;
 use ship_designer_server::app_setup::{SetupBevyPlugins, SetupServerSpecific};
 use ship_designer_server::server_state::ServerState;
@@ -36,15 +36,14 @@ impl ServerTest for App {
         let mut app = Self::new();
 
         app.setup_bevy_plugins()
-            .add_plugin(LogPlugin {
+            .add_plugins(LogPlugin {
                 level: Level::ERROR,
                 filter: String::new(),
             })
             .setup_fixed_timestep_schedule()
             .setup_rapier()
             .setup_server_specific()
-            .add_startup_system(setup_server)
-            .setup();
+            .add_systems(Startup, setup_server);
 
         app
     }
@@ -79,7 +78,7 @@ fn fixed_update_works() {
     }
 
     app.insert_resource(TestResource(0));
-    app.add_system(test_me.in_schedule(CoreSchedule::FixedUpdate));
+    app.add_systems(FixedUpdate, test_me.in_set(FixedUpdateSet::Update));
 
     app.fixed_update();
 

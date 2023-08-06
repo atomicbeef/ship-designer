@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::prelude::systems::init_colliders;
 use common::entity_lookup::{lookup_exclusive, lookup};
+use common::fixed_update::FixedUpdateSet;
 use common::part::colliders::{PartCollider, RegenerateColliders};
 use common::player::PlayerId;
 use common::ship::Ship;
@@ -60,14 +61,14 @@ pub fn spawn_part_exclusive(
         .insert(TransformBundle::from_transform(transform))
         .id();
     
-    (AddChild { parent: construct, child: part_entity }).write(world);
+    (AddChild { parent: construct, child: part_entity }).apply(world);
     
     for collider_data in colliders {
         let collider_entity = world.spawn(collider_data.collider)
             .insert(TransformBundle::from_transform(collider_data.transform))
             .insert(PartCollider::new(part_entity))
             .id();
-        (AddChild { parent: construct, child: collider_entity }).write(world);
+        (AddChild { parent: construct, child: collider_entity }).apply(world);
     }
 
     part_entity
@@ -135,7 +136,7 @@ fn confirm_place_part_requests(
             });
 
             // Update colliders in Rapier
-            Schedule::new().add_system(init_colliders).run(world);
+            Schedule::new().add_systems(init_colliders).run(world);
             world.resource_scope(|_, mut rapier_context: Mut<RapierContext>| {
                 rapier_context.update_query_pipeline();
             });
@@ -258,13 +259,13 @@ pub struct ServerPartPlugin;
 
 impl Plugin for ServerPartPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
+        app.add_systems(FixedUpdate, (
             confirm_place_part_requests,
             send_place_part_commands.after(confirm_place_part_requests),
             confirm_delete_part_requests,
             send_delete_part_commands.after(confirm_delete_part_requests),
             send_voxel_updates,
             regenerate_colliders,
-        ).in_schedule(CoreSchedule::FixedUpdate));
+        ).in_set(FixedUpdateSet::Update));
     }
 }

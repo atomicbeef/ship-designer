@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
 use common::entity_lookup::lookup;
-use common::fixed_update::AddFixedEvent;
+use common::fixed_update::{AddFixedEvent, FixedUpdateSet};
 use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
 use common::player::{PlayerId, PlayerName, PlayerBundle, LocalPlayer};
 use common::part::{Parts, PartNetworkRepr, PartId};
@@ -125,10 +125,10 @@ impl Plugin for PlayerConnectionPlugin {
         app.add_fixed_event::<PlayerConnected>()
             .add_fixed_event::<PlayerDisconnected>()
             .add_fixed_event::<InitialState>()
-            .add_systems((
+            .add_systems(FixedUpdate, (
                 player_connected,
                 player_disconnected,
                 initial_state_setup.run_if(on_event::<InitialState>()),
-            ).in_schedule(CoreSchedule::FixedUpdate));
+            ).in_set(FixedUpdateSet::Update));
     }
 }

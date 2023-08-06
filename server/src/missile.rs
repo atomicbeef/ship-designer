@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::utils::HashSet;
 use bevy_rapier3d::prelude::*;
 
+use common::fixed_update::FixedUpdateSet;
 use common::network_id::NetworkId;
 use common::part::colliders::{RegenerateColliders, PartCollider};
 use common::part::events::{VoxelUpdate, DeletePartCommand};
@@ -265,11 +266,11 @@ pub struct ServerMissilePlugin;
 
 impl Plugin for ServerMissilePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
+        app.add_systems(FixedUpdate, (
             spawn_missiles,
             send_spawn_missile_commands.after(spawn_missiles),
             explode_missiles,
             send_explode_missile_commands.after(explode_missiles),
-        ).in_schedule(CoreSchedule::FixedUpdate));
+        ).in_set(FixedUpdateSet::Update));
     }
 }

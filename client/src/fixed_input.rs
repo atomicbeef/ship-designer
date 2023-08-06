@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use bevy::{prelude::*, input::{InputSystem, mouse::MouseMotion}};
 
-use common::fixed_update::{Flag, FixedUpdateSet, AddFixedEvent};
+use common::fixed_update::{Flag, AddFixedEvent};
 
 #[derive(Debug, Clone, Resource, Reflect, Deref, DerefMut)]
 pub struct FixedInput<T: Copy + Eq + Hash + Send + Sync + 'static>(Input<T>);
@@ -48,7 +48,7 @@ fn clear_fixed_input<T: Copy + Eq + Hash + Send + Sync + 'static>(
     flag.enabled = false;
 }
 
-#[derive(Debug, Clone, Resource, Reflect, Deref, DerefMut)]
+#[derive(Debug, Clone, Resource, Reflect, Deref, DerefMut, Event)]
 pub struct FixedMouseMotion(MouseMotion);
 
 fn send_fixed_mouse_motion_events(
@@ -66,12 +66,9 @@ pub struct FixedInputSystem;
 fn add_fixed_input<T: Copy + Eq + Hash + Send + Sync + 'static>(app: &mut App) {
     app.init_resource::<Flag<Input<T>>>()
         .init_resource::<FixedInput<T>>()
-        .add_system(update_fixed_input::<T>.in_base_set(CoreSet::PreUpdate).after(InputSystem))
-        .add_system(set_clear_fixed_input::<T>.in_schedule(CoreSchedule::FixedUpdate)
-            .in_base_set(FixedUpdateSet::PreUpdate)
-            .in_set(FixedInputSystem)
-        )
-        .add_system(clear_fixed_input::<T>.in_base_set(CoreSet::First));
+        .add_systems(PreUpdate, update_fixed_input::<T>.after(InputSystem))
+        .add_systems(FixedUpdate, set_clear_fixed_input::<T>.in_set(FixedInputSystem))
+        .add_systems(First, clear_fixed_input::<T>);
 }
 
 pub struct FixedInputPlugin;
@@ -83,9 +80,6 @@ impl Plugin for FixedInputPlugin {
         add_fixed_input::<MouseButton>(app);
         add_fixed_input::<GamepadButton>(app);
         app.add_fixed_event::<FixedMouseMotion>();
-        app.add_system(send_fixed_mouse_motion_events.in_schedule(CoreSchedule::FixedUpdate)
-            .in_base_set(FixedUpdateSet::PreUpdate)
-            .in_set(FixedInputSystem)
-        );
+        app.add_systems(FixedUpdate, send_fixed_mouse_motion_events.in_set(FixedInputSystem));
     }
 }

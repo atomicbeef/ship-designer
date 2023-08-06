@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use common::fixed_update::AddFixedEvent;
+use common::fixed_update::{AddFixedEvent, FixedUpdateSet};
 use common::ship::Ship;
 use uflow::SendMode;
 
@@ -111,9 +111,9 @@ impl Plugin for PlayerConnectionPlugin {
     fn build(&self, app: &mut App) {
         app.add_fixed_event::<PlayerConnected>()
             .add_fixed_event::<PlayerDisconnected>()
-            .add_systems((
+            .add_systems(FixedUpdate, (
                 send_player_connected,
                 send_player_disconnected,
-            ).in_schedule(CoreSchedule::FixedUpdate));
+            ).in_set(FixedUpdateSet::Update));
     }
 }

@@ -2,7 +2,6 @@ use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_prototype_debug_lines::DebugLinesPlugin;
 use bevy_rapier3d::prelude::*;
 use uflow::client::Client;
 use uflow::EndpointConfig;
@@ -44,16 +43,19 @@ fn main() {
         )
         .setup_fixed_timestep_schedule()
         .setup_rapier()
-        .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugins(RapierDebugRenderPlugin::default())
         .setup_client_specific()
-        .add_plugin(DebugLinesPlugin::default())
-        .add_startup_system(set_window_title)
-        .add_startup_system(setup.after(setup_hardcoded_parts))
-        .add_system(disconnect_on_esc)
-        .add_system(disconnect_on_window_close)
-        .add_plugin(WorldInspectorPlugin::new())
+        .add_systems(Startup, (
+            set_window_title,
+            setup.after(setup_hardcoded_parts)
+        ))
+        .add_systems(Update, disconnect_on_esc)
+        .add_systems(Update, disconnect_on_window_close)
+        .add_plugins(WorldInspectorPlugin::new())
         .insert_resource(connection_state)
-        .add_system(update_intersections.in_base_set(FixedUpdateSet::PreUpdate).after(FixedInputSystem))
+        .add_systems(FixedUpdate,
+            update_intersections.in_set(FixedUpdateSet::PreUpdate).after(FixedInputSystem)
+        )
         .register_type::<common::part::PartId>()
         .register_type::<common::part::PartHandle>()
         .register_type::<common::player::PlayerId>()

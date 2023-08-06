@@ -128,6 +128,7 @@ pub fn generate_part_mesh(
     mesh
 }
 
+#[derive(Event)]
 pub struct RegeneratePartMesh(pub Entity);
 
 pub fn regenerate_part_mesh(

@@ -27,13 +27,15 @@ pub trait SetupBevyPlugins {
 
 impl SetupBevyPlugins for App {
     fn setup_bevy_plugins(&mut self) -> &mut Self {
-        self.add_plugins(MinimalPlugins)
-            .add_plugin(TransformPlugin)
-            .add_plugin(HierarchyPlugin)
-            .add_plugin(DiagnosticsPlugin)
-            .add_plugin(AssetPlugin::default())
-            .add_plugin(MeshPlugin)
-            .add_plugin(ScenePlugin)
+        self.add_plugins((
+            MinimalPlugins,
+            TransformPlugin,
+            HierarchyPlugin,
+            DiagnosticsPlugin,
+            AssetPlugin::default(),
+            MeshPlugin,
+            ScenePlugin,
+        ))
     }
 }
 
@@ -43,14 +45,16 @@ pub trait SetupServerSpecific {
 
 impl SetupServerSpecific for App {
     fn setup_server_specific(&mut self) -> &mut Self {
-        self.add_plugin(PartPlugin)
-            .add_plugin(ServerPartPlugin)
-            .add_plugin(PlayerConnectionPlugin)
-            .add_plugin(MissilePlugin)
-            .add_plugin(ServerMissilePlugin)
+        self.add_plugins((
+                PartPlugin,
+                ServerPartPlugin,
+                PlayerConnectionPlugin,
+                MissilePlugin,
+                ServerMissilePlugin,
+            ))
             .insert_resource(FixedTime::new(Duration::from_secs_f32(PHYSICS_TIMESTEP)))
             .insert_resource(NetworkIdGenerator::new())
-            .add_startup_system(setup_hardcoded_parts)
-            .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate).in_base_set(FixedUpdateSet::PreUpdate))
+            .add_systems(Startup, setup_hardcoded_parts)
+            .add_systems(FixedUpdate, process_packets.in_set(FixedUpdateSet::PreUpdate))
     }
 }

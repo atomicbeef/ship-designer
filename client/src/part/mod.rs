@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use common::channels::Channel;
 use common::entity_lookup::lookup;
-use common::fixed_update::AddFixedEvent;
+use common::fixed_update::{AddFixedEvent, FixedUpdateSet};
 use packets::Packet;
 use common::part::events::{VoxelUpdate, PlacePartRequest, DeletePartRequest, PlacePartCommand, DeletePartCommand};
 use common::network_id::NetworkId;
@@ -185,7 +185,7 @@ impl Plugin for ClientPartPlugin {
         app.insert_resource(PartMeshHandles::new())
             .add_fixed_event::<RegeneratePartMesh>()
             .add_fixed_event::<VoxelUpdate>()
-            .add_systems((
+            .add_systems(FixedUpdate, (
                 update_voxels,
                 regenerate_part_mesh.after(update_voxels),
                 regenerate_colliders.after(update_voxels),
@@ -194,6 +194,6 @@ impl Plugin for ClientPartPlugin {
                 send_delete_part_requests,
                 place_parts,
                 delete_parts,
-            ).in_schedule(CoreSchedule::FixedUpdate));
+            ).in_set(FixedUpdateSet::Update));
     }
 }

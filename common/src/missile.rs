@@ -21,7 +21,6 @@ impl Missile {
 pub struct MissileBundle {
     pub missile: Missile,
     pub network_id: NetworkId,
-    #[bundle]
     pub transform: TransformBundle,
     pub collider: Collider,
     pub sensor: Sensor,
@@ -45,14 +44,14 @@ impl Default for MissileBundle {
     }
 }
 
-#[derive(Debug, IntoPacket, TryFromPacket)]
+#[derive(Debug, IntoPacket, TryFromPacket, Event)]
 #[PacketType(SpawnMissile)]
 pub struct SpawnMissileRequest {
     pub transform: CompactTransform,
     pub velocity: Vec3
 }
 
-#[derive(Debug, IntoPacket, TryFromPacket)]
+#[derive(Debug, IntoPacket, TryFromPacket, Event)]
 #[PacketType(SpawnMissile)]
 pub struct SpawnMissileCommand {
     pub transform: CompactTransform,
@@ -60,7 +59,7 @@ pub struct SpawnMissileCommand {
     pub network_id: NetworkId,
 }
 
-#[derive(IntoPacket, TryFromPacket)]
+#[derive(IntoPacket, TryFromPacket, Event)]
 #[PacketType(ExplodeMissile)]
 pub struct ExplodeMissileCommand {
     pub network_id: NetworkId,

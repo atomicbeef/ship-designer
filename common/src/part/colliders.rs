@@ -138,6 +138,7 @@ pub fn generate_collider_data(
     colliders
 }
 
+#[derive(Event)]
 pub struct RegenerateColliders(pub Entity);
 
 pub fn remove_unused_colliders(

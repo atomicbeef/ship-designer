@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
+use common::fixed_update::FixedUpdateSet;
 
 use crate::fixed_input::FixedInput;
 
@@ -48,6 +49,6 @@ pub struct PlayerControllerPlugin;
 
 impl Plugin for PlayerControllerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(player_movement.in_schedule(CoreSchedule::FixedUpdate));
+        app.add_systems(FixedUpdate, player_movement.in_set(FixedUpdateSet::Update));
     }
 }

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::prelude::shape::Cube;
 use bevy_rapier3d::prelude::*;
-use common::entity_lookup::lookup;
+use common::{entity_lookup::lookup, fixed_update::FixedUpdateSet};
 use common::network_id::NetworkId;
 use uflow::SendMode;
 
@@ -82,11 +82,11 @@ pub struct ClientMissilePlugin;
 
 impl Plugin for ClientMissilePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
+        app.add_systems(FixedUpdate, (
             spawn_missiles,
             request_spawn_missiles,
             send_spawn_missile_requests.after(request_spawn_missiles),
             explode_missiles,
-        ).in_schedule(CoreSchedule::FixedUpdate));
+        ).in_set(FixedUpdateSet::Update));
     }
 }

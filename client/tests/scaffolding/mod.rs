@@ -10,7 +10,7 @@ use bevy::scene::ScenePlugin;
 use bevy::input::{InputPlugin, ButtonState};
 use bevy::pbr::PbrPlugin;
 
-use common::fixed_update::{SetupFixedTimeStepSchedule, SetupRapier};
+use common::fixed_update::{SetupFixedTimeStepSchedule, SetupRapier, FixedUpdateSet};
 use common::PHYSICS_TIMESTEP;
 use ship_designer_client::{app_setup::SetupClientSpecific, connection_state::ConnectionState};
 use uflow::client::{Client, Config};
@@ -52,30 +52,32 @@ pub trait SetupBevyPlugins {
 
 impl SetupBevyPlugins for App {
     fn setup_bevy_plugins(&mut self) -> &mut Self {
-        self.add_plugins(MinimalPlugins)
-            .add_plugin(TransformPlugin)
-            .add_plugin(HierarchyPlugin)
-            .add_plugin(DiagnosticsPlugin)
-            .add_plugin(AssetPlugin::default())
-            .add_plugin(ScenePlugin)
-            .add_plugin(RenderPlugin {
+        self.add_plugins((
+            MinimalPlugins,
+            TransformPlugin,
+            HierarchyPlugin,
+            DiagnosticsPlugin,
+            AssetPlugin::default(),
+            ScenePlugin,
+            RenderPlugin {
                 wgpu_settings: WgpuSettings {
                     backends: None,
                     ..Default::default()
                 }
-            })
-            .add_plugin(ImagePlugin::default())
-            .add_plugin(LogPlugin {
+            },
+            ImagePlugin::default(),
+            LogPlugin {
                 level: Level::ERROR,
-                filter: "wgpu=error,naga=error".to_string(),
-            })
-            .add_plugin(InputPlugin)
-            .add_plugin(WindowPlugin {
+                filter: "wgpu=error,naga=error".to_string()
+            },
+            InputPlugin,
+            WindowPlugin {
                 primary_window: None,
                 exit_condition: bevy::window::ExitCondition::DontExit,
                 ..Default::default()
-            })
-            .add_plugin(PbrPlugin::default())
+            },
+            PbrPlugin::default(),
+        ))
     }
 }
 
@@ -91,8 +93,7 @@ impl ClientTest for App {
             .setup_fixed_timestep_schedule()
             .setup_rapier()
             .setup_client_specific()
-            .setup_client_connection()
-            .setup();
+            .setup_client_connection();
 
         app
     }
@@ -128,6 +129,7 @@ impl MockInput for App {
             scan_code: 0,
             key_code: Some(key),
             state: ButtonState::Pressed,
+            window: Entity::PLACEHOLDER,
         });
     }
 
@@ -136,6 +138,7 @@ impl MockInput for App {
             scan_code: 0,
             key_code: Some(key),
             state: ButtonState::Released,
+            window: Entity::PLACEHOLDER,
         });
     }
 
@@ -143,6 +146,7 @@ impl MockInput for App {
         self.world.get_resource_mut::<Events<MouseButtonInput>>().unwrap().send(MouseButtonInput {
             button,
             state: ButtonState::Pressed,
+            window: Entity::PLACEHOLDER,
         });
     }
 
@@ -150,6 +154,7 @@ impl MockInput for App {
         self.world.get_resource_mut::<Events<MouseButtonInput>>().unwrap().send(MouseButtonInput {
             button,
             state: ButtonState::Released,
+            window: Entity::PLACEHOLDER,
         });
     }
 }
@@ -166,7 +171,7 @@ fn fixed_update_works() {
     }
 
     app.insert_resource(TestResource(0));
-    app.add_system(test_me.in_schedule(CoreSchedule::FixedUpdate));
+    app.add_systems(FixedUpdate, test_me.in_set(FixedUpdateSet::Update));
 
     app.fixed_update();
 

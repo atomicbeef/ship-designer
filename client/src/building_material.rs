@@ -1,10 +1,10 @@
 use bevy::{
     prelude::*,
     render::render_resource::{AsBindGroup, ShaderRef},
-    reflect::TypeUuid
+    reflect::{TypePath, TypeUuid},
 };
 
-#[derive(AsBindGroup, TypeUuid, Debug, Clone)]
+#[derive(AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
 #[uuid = "2e56bfa6-2ef6-45c5-8a93-5bcda48be051"]
 pub struct BuildingMaterial {
     #[uniform(0)]

@@ -6,7 +6,7 @@ use crate::player::{PlayerName, PlayerId};
 use crate::part::PartNetworkRepr;
 use crate::compact_transform::CompactTransform;
 
-#[derive(IntoPacket, TryFromPacket)]
+#[derive(IntoPacket, TryFromPacket, Event)]
 #[PacketType(PlayerConnected)]
 pub struct PlayerConnected {
     pub id: PlayerId,
@@ -14,11 +14,11 @@ pub struct PlayerConnected {
     pub transform: Transform,
 }
 
-#[derive(IntoPacket, TryFromPacket)]
+#[derive(IntoPacket, TryFromPacket, Event)]
 #[PacketType(PlayerDisconnected)]
 pub struct PlayerDisconnected(pub PlayerId);
 
-#[derive(IntoPacket, TryFromPacket)]
+#[derive(IntoPacket, TryFromPacket, Event)]
 #[PacketType(InitialState)]
 pub struct InitialState {
     pub player_id: PlayerId,

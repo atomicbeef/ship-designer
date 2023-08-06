@@ -86,10 +86,10 @@ pub struct FreeCameraPlugin;
 
 impl Plugin for FreeCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
+        app.add_systems(Startup, (
             camera_move,
             camera_rotate,
             cursor_grab
-        ).in_schedule(CoreSchedule::FixedUpdate));
+        ));
     }
 }

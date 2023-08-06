@@ -38,16 +38,18 @@ pub trait SetupClientSpecific {
 impl SetupClientSpecific for App {
     fn setup_client_specific(&mut self) -> &mut Self {
         self.insert_resource(settings::Settings::default())
-            .add_plugin(FixedInputPlugin)
-            .add_plugin(FreeCameraPlugin)
-            .add_plugin(BuildingPlugin)
-            .add_plugin(PlayerConnectionPlugin)
-            .add_plugin(PartPlugin)
-            .add_plugin(ClientPartPlugin)
-            .add_plugin(PlayerControllerPlugin)
-            .add_plugin(MissilePlugin)
-            .add_plugin(ClientMissilePlugin)
-            .add_system(process_packets.in_schedule(CoreSchedule::FixedUpdate).in_base_set(FixedUpdateSet::PreUpdate))
-            .add_startup_system(setup_hardcoded_parts)
+            .add_plugins((
+                FixedInputPlugin,
+                FreeCameraPlugin,
+                BuildingPlugin,
+                PlayerConnectionPlugin,
+                PartPlugin,
+                ClientPartPlugin,
+                PlayerControllerPlugin,
+                MissilePlugin,
+                ClientMissilePlugin,
+            ))
+            .add_systems(FixedUpdate, process_packets.in_set(FixedUpdateSet::PreUpdate))
+            .add_systems(Startup, setup_hardcoded_parts)
     }
 }

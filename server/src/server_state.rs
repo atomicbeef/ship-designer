@@ -42,7 +42,7 @@ impl ServerState {
     fn set_next_id(&mut self) {
         loop {
             self.current_player_id = self.current_player_id.wrapping_add(1);
-            if let None = self.client_addresses.get(&self.current_player_id.into()) {
+            if let None = self.client_addresses.get(&PlayerId::from(self.current_player_id)) {
                 break;
             }
         }

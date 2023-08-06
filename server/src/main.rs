@@ -12,15 +12,17 @@ use ship_designer_server::network_id_generator::NetworkIdGenerator;
 fn main() {
     App::new()
         .setup_bevy_plugins()
-        .add_plugin(LogPlugin {
+        .add_plugins(LogPlugin {
             level: Level::DEBUG,
             filter: String::new()
         })
         .setup_fixed_timestep_schedule()
         .setup_rapier()
         .setup_server_specific()
-        .add_startup_system(setup_server.after(setup_hardcoded_parts))
-        .add_startup_system(setup.after(setup_hardcoded_parts))
+        .add_systems(Startup, (
+            setup_server.after(setup_hardcoded_parts),
+            setup.after(setup_hardcoded_parts),
+        ))
         .run();
 }
 

@@ -2,6 +2,7 @@ use core::f32::consts::PI;
 
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
+use common::fixed_update::FixedUpdateSet;
 use common::part::colliders::{PartCollider, RegenerateColliders};
 use bevy_rapier3d::prelude::*;
 
@@ -201,11 +202,11 @@ fn create_build_request_events(
 
     if mouse_buttons.just_pressed(MouseButton::Left) {
         // Part deletion
-        if keys.pressed(KeyCode::LAlt) {
+        if keys.pressed(KeyCode::AltLeft) {
             let network_id = network_id_query.get(part_entity).unwrap();
             delete_part_request_writer.send(DeletePartRequest(*network_id));
         // Voxel deletion
-        } else if keys.pressed(KeyCode::LControl) {
+        } else if keys.pressed(KeyCode::ControlLeft) {
             if let Ok((part_transform, mut part_handle)) = voxel_intersection_query.get_mut(part_entity) {
                 let inverse = part_transform.affine().inverse();
                 
@@ -257,11 +258,11 @@ pub struct BuildingPlugin;
 
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MaterialPlugin::<BuildingMaterial>::default())
-            .add_systems((
+        app.add_plugins(MaterialPlugin::<BuildingMaterial>::default())
+            .add_systems(FixedUpdate, (
                 move_build_marker,
                 rotate_build_marker,
                 create_build_request_events
-            ).chain().in_schedule(CoreSchedule::FixedUpdate));
+            ).chain().in_set(FixedUpdateSet::Update));
     }
 }

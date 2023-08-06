@@ -14,7 +14,7 @@ use colliders::{RegenerateColliders, remove_unused_colliders};
 use materials::Material;
 use packets_derive::{PacketSerialize, PacketDeserialize};
 
-use crate::fixed_update::AddFixedEvent;
+use crate::fixed_update::{AddFixedEvent, FixedUpdateSet};
 
 use self::colliders::PartCollider;
 
@@ -168,6 +168,7 @@ impl Part {
 struct HandleDropped(PartId);
 
 #[derive(Component, Reflect)]
+#[reflect(from_reflect = false)]
 pub struct PartHandle {
     id: PartId,
     #[reflect(ignore)]
@@ -221,6 +222,7 @@ impl PacketDeserialize for PartNetworkRepr {
     }
 }
 
+#[derive(Event)]
 pub struct FreedParts(pub Box<[PartId]>);
 
 #[derive(Resource)]
@@ -341,7 +343,7 @@ pub fn free_parts(mut parts: ResMut<Parts>, mut freed_parts_writer: EventWriter<
 pub struct DeletePart(pub Entity);
 
 impl Command for DeletePart {
-    fn write(self, world: &mut World) {
+    fn apply(self, world: &mut World) {
         let construct = world.get::<Parent>(self.0).unwrap().get();
     
         // Remove colliders
@@ -373,10 +375,10 @@ impl Plugin for PartPlugin {
             .add_fixed_event::<VoxelUpdate>()
             .add_fixed_event::<FreedParts>()
             .add_fixed_event::<RegenerateColliders>()
-            .add_systems((
+            .add_systems(FixedUpdate, (
                 free_parts,
                 remove_unused_colliders
-            ).in_schedule(CoreSchedule::FixedUpdate));
+            ).in_set(FixedUpdateSet::Update));
     }
 }
 
