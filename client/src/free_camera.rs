@@ -1,6 +1,7 @@
 use bevy::ecs::event::EventReader;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
+use common::fixed_update::FixedUpdateSet;
 
 use crate::fixed_input::{FixedInput, FixedMouseMotion};
 use crate::settings::Settings;
@@ -86,10 +87,10 @@ pub struct FreeCameraPlugin;
 
 impl Plugin for FreeCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (
+        app.add_systems(FixedUpdate, (
             camera_move,
             camera_rotate,
             cursor_grab
-        ));
+        ).in_set(FixedUpdateSet::Update));
     }
 }
