@@ -8,10 +8,12 @@ use common::player::{PlayerId, PlayerName, PlayerBundle, LocalPlayer};
 use common::part::{Parts, PartNetworkRepr, PartId};
 use common::ship::Ship;
 
+use crate::camera::ActiveCameraEntity;
 use crate::part::spawn_part;
 use crate::building_material::BuildingMaterial;
 use crate::part::meshes::PartMeshHandles;
 use crate::player_controller::ControlledPlayer;
+use crate::raycast_selection::SelectionSource;
 
 fn player_connected(
     mut player_connected_reader: EventReader<PlayerConnected>,
@@ -61,7 +63,8 @@ fn initial_state_setup(
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut building_materials: ResMut<Assets<BuildingMaterial>>,
     mut initial_state_reader: EventReader<InitialState>,
-    mut parts: ResMut<Parts>
+    mut parts: ResMut<Parts>,
+    mut active_camera: ResMut<ActiveCameraEntity>,
 ) {
     for initial_state in initial_state_reader.iter() {
         for (id, name, transform) in initial_state.players.iter() {
@@ -81,7 +84,15 @@ fn initial_state_setup(
             }).id();
 
             if *id == initial_state.player_id {
-                commands.entity(player).insert(LocalPlayer).insert(ControlledPlayer);
+                commands.entity(player)
+                    .insert(LocalPlayer)
+                    .insert(ControlledPlayer)
+                    .with_children(|parent| {
+                        let id = parent.spawn(Camera3dBundle::default())
+                            .insert(SelectionSource::new())
+                            .id();
+                        active_camera.0 = Some(id);
+                    });
             }
         }
 

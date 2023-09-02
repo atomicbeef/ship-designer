@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use common::fixed_update::FixedUpdateSet;
 
+use crate::camera::ActiveCameraEntity;
 use crate::fixed_input::{FixedInput, FixedMouseMotion};
 use crate::settings::Settings;
 
@@ -12,9 +13,16 @@ pub struct FreeCamera;
 fn camera_move(
     keys: Res<FixedInput<KeyCode>>,
     settings: Res<Settings>,
-    mut query: Query<&mut Transform, With<FreeCamera>>
+    mut query: Query<(Entity, &mut Transform), With<FreeCamera>>,
+    active_camera: Res<ActiveCameraEntity>,
 ) {
-    for mut transform in query.iter_mut() {
+    for (camera_entity, mut transform) in query.iter_mut() {
+        if let Some(entity) = active_camera.0 {
+            if entity != camera_entity {
+                continue;
+            }
+        }
+
         let mut velocity = Vec3::ZERO;
 
         for key in keys.get_pressed() {
@@ -39,11 +47,18 @@ fn camera_rotate(
     mut motion_evr: EventReader<FixedMouseMotion>,
     primary_window_query: Query<&Window, With<PrimaryWindow>>,
     settings: Res<Settings>,
-    mut camera_query: Query<&mut Transform, With<FreeCamera>>
+    mut camera_query: Query<(Entity, &mut Transform), With<FreeCamera>>,
+    active_camera: Res<ActiveCameraEntity>,
 ) {
     let primary_window = primary_window_query.get_single();
     if let Ok(window) = primary_window {
-        for mut transform in camera_query.iter_mut() {
+        for (camera_entity, mut transform) in camera_query.iter_mut() {
+            if let Some(entity) = active_camera.0 {
+                if entity != camera_entity {
+                    continue;
+                }
+            }
+
             for ev in motion_evr.iter() {
                 match window.cursor.grab_mode {
                     CursorGrabMode::None => {},
