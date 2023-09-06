@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::render::view::RenderLayers;
 use bevy_rapier3d::prelude::*;
 
 use common::entity_lookup::lookup;
@@ -87,8 +88,13 @@ fn initial_state_setup(
                 commands.entity(player)
                     .insert(LocalPlayer)
                     .insert(ControlledPlayer)
+                    // Make the controller player invisible to the first person camera
+                    .insert(RenderLayers::from_layers(&[1]))
                     .with_children(|parent| {
-                        let id = parent.spawn(Camera3dBundle::default())
+                        let id = parent.spawn(Camera3dBundle {
+                            transform: Transform::from_xyz(0.0, 1.8, 0.0),
+                            ..Default::default()
+                        })
                             .insert(SelectionSource::new())
                             .id();
                         active_camera.0 = Some(id);

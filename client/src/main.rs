@@ -1,5 +1,6 @@
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
+use bevy::render::view::RenderLayers;
 use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
@@ -85,7 +86,9 @@ fn setup(
         ..Default::default()
     })
     .insert(FreeCamera)
-    .insert(SelectionSource::new());
+    .insert(SelectionSource::new())
+    // Show the locally controlled player in the free camera
+    .insert(RenderLayers::from_layers(&[0, 1]));
 
     commands.spawn(BuildMarkerBundle::new(
         PartId::from(1),
