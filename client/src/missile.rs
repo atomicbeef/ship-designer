@@ -9,17 +9,21 @@ use common::missile::{SpawnMissileRequest, SpawnMissileCommand, MissileBundle, E
 use packets::Packet; 
 use common::channels::Channel;
 
+use crate::camera::ActiveCameraEntity;
 use crate::{connection_state::ConnectionState, fixed_input::FixedInput};
 
 fn request_spawn_missiles(
     keys: Res<FixedInput<KeyCode>>,
-    camera_query: Query<&GlobalTransform, With<Camera>>,
+    active_camera_entity: Res<ActiveCameraEntity>,
+    camera_query: Query<&GlobalTransform>,
     mut spawn_event_writer: EventWriter<SpawnMissileRequest>,
 ) {
     if keys.just_pressed(KeyCode::M) {
-        let camera_transform = match camera_query.iter().next() {
-            Some(camera_transform) => camera_transform,
-            None => { return; },
+        let Some(entity) = active_camera_entity.0 else {
+            return;
+        };
+        let Ok(camera_transform) = camera_query.get(entity) else {
+            return;
         };
 
         spawn_event_writer.send(SpawnMissileRequest {
