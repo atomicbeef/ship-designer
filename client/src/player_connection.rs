@@ -13,7 +13,7 @@ use crate::camera::ActiveCameraEntity;
 use crate::part::spawn_part;
 use crate::building_material::BuildingMaterial;
 use crate::part::meshes::PartMeshHandles;
-use crate::player_controller::ControlledPlayer;
+use crate::player_controller::{ControlledPlayer, PlayerCamera};
 use crate::raycast_selection::SelectionSource;
 
 fn player_connected(
@@ -96,6 +96,7 @@ fn initial_state_setup(
                             ..Default::default()
                         })
                             .insert(SelectionSource::new())
+                            .insert(PlayerCamera)
                             .id();
                         active_camera.0 = Some(id);
                     });

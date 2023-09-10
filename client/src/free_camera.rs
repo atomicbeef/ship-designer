@@ -63,11 +63,12 @@ fn camera_rotate(
                 match window.cursor.grab_mode {
                     CursorGrabMode::None => {},
                     CursorGrabMode::Confined | CursorGrabMode::Locked => {
-                        let pitch = (settings.mouse_sensitivity * ev.delta.y * window.height()).to_radians();
-                        let yaw = (settings.mouse_sensitivity * ev.delta.x * window.width()).to_radians();
+                        let scale_factor = window.height().min(window.width());
+                        let pitch = (settings.free_camera_sensitivity * ev.delta.y * scale_factor).to_radians();
+                        let yaw = (settings.free_camera_sensitivity * ev.delta.x * scale_factor).to_radians();
 
-                        transform.rotate_local_x(-pitch);
                         transform.rotate_y(-yaw);
+                        transform.rotate_local_x(-pitch);
                     }
                 }
             }
@@ -78,7 +79,17 @@ fn camera_rotate(
 fn cursor_grab(
     mouse_button_input: Res<FixedInput<MouseButton>>,
     mut primary_window_query: Query<&mut Window, With<PrimaryWindow>>,
+    active_camera: Res<ActiveCameraEntity>,
+    free_camera_query: Query<(), With<FreeCamera>>
 ) {
+    // Only manage the cursor if the active camera is a free camera
+    let Some(camera_entity) = active_camera.0 else {
+        return;
+    };
+    let Ok(_) = free_camera_query.get(camera_entity) else {
+        return;
+    };
+
     let primary_window = primary_window_query.get_single_mut();
     if let Ok(mut window) = primary_window {
         // Lock and hide the cursor if RMB is pressed
