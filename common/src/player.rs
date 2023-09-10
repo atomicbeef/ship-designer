@@ -60,6 +60,3 @@ impl Default for PlayerBundle {
         }
     }
 }
-
-#[derive(Component)]
-pub struct LocalPlayer;

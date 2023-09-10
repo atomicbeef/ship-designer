@@ -5,7 +5,7 @@ use bevy_rapier3d::prelude::*;
 use common::entity_lookup::lookup;
 use common::fixed_update::{AddFixedEvent, FixedUpdateSet};
 use common::player_connection::{PlayerConnected, PlayerDisconnected, InitialState};
-use common::player::{PlayerId, PlayerName, PlayerBundle, LocalPlayer};
+use common::player::{PlayerId, PlayerName, PlayerBundle};
 use common::part::{Parts, PartNetworkRepr, PartId};
 use common::ship::Ship;
 
@@ -86,7 +86,6 @@ fn initial_state_setup(
 
             if *id == initial_state.player_id {
                 commands.entity(player)
-                    .insert(LocalPlayer)
                     .insert(ControlledPlayer)
                     // Make the controller player invisible to the first person camera
                     .insert(RenderLayers::from_layers(&[1]))

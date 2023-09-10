@@ -48,7 +48,7 @@ fn player_movement(
         direction.y -= 1.0;
     }
 
-    external_impulse.impulse = direction.normalize_or_zero() * 5.0;
+    external_impulse.impulse = direction.normalize_or_zero() * common::PHYSICS_TIMESTEP * 50.0;
 }
 
 fn player_rotation(
