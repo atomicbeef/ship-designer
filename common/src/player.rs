@@ -54,8 +54,8 @@ impl Default for PlayerBundle {
             visibility: VisibilityBundle::default(),
             collider: Collider::capsule(Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, -1.0, 0.0), 0.5),
             rigid_body: RigidBody::Dynamic,
-            locked_axes: LockedAxes::ROTATION_LOCKED,
-            damping: Damping { linear_damping: 2.0, angular_damping: 2.0 },
+            locked_axes: LockedAxes::empty(),
+            damping: Damping { linear_damping: 2.0, angular_damping: 4.0 },
             external_impulse: ExternalImpulse::default(),
         }
     }

@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, CursorGrabMode};
 use bevy_rapier3d::prelude::*;
+
 use common::fixed_update::FixedUpdateSet;
+use common::PHYSICS_TIMESTEP;
 
 use crate::camera::ActiveCameraEntity;
 use crate::fixed_input::{FixedInput, FixedMouseMotion};
@@ -15,64 +17,67 @@ pub struct PlayerCamera;
 
 fn player_movement(
     keys: Res<FixedInput<KeyCode>>,
-    mut external_impulse_query: Query<&mut ExternalImpulse, With<ControlledPlayer>>,
-) {
-    let mut external_impulse = match external_impulse_query.iter_mut().next() {
-        Some(query) => query,
-        None => { return; },
-    };
-
-    let mut direction = Vec3::default();
-
-    if keys.pressed(KeyCode::W) {
-        direction.z -= 1.0;
-    }
-
-    if keys.pressed(KeyCode::S) {
-        direction.z += 1.0;
-    }
-
-    if keys.pressed(KeyCode::A) {
-        direction.x -= 1.0;
-    }
-
-    if keys.pressed(KeyCode::D) {
-        direction.x += 1.0;
-    }
-
-    if keys.pressed(KeyCode::Space) {
-        direction.y += 1.0;
-    }
-
-    if keys.pressed(KeyCode::C) {
-        direction.y -= 1.0;
-    }
-
-    external_impulse.impulse = direction.normalize_or_zero() * common::PHYSICS_TIMESTEP * 50.0;
-}
-
-fn player_rotation(
+    mut player_data_query: Query<(&mut ExternalImpulse, &Transform), With<ControlledPlayer>>,
     mut motion_reader: EventReader<FixedMouseMotion>,
-    mut player_transform_query: Query<&mut Transform, With<ControlledPlayer>>,
     primary_window_query: Query<&Window, With<PrimaryWindow>>,
     settings: Res<Settings>,
 ) {
-    let Ok(window) = primary_window_query.get_single() else {
+    let Ok((mut external_impulse, player_transform)) = player_data_query.get_single_mut() else {
         return;
     };
 
-    for motion in motion_reader.iter() {
-        let Ok(mut transform) = player_transform_query.get_single_mut() else {
-            return;
-        };
+    let Ok(window) = primary_window_query.get_single() else {
+        return;
+    };
+    
+    if matches!(window.cursor.grab_mode, CursorGrabMode::None) {
+        return;
+    } 
 
-        let scale_factor = window.height().min(window.width());
-        let yaw = -motion.delta.x * settings.first_person_sensitivity * scale_factor;
-        let pitch = -motion.delta.y * settings.first_person_sensitivity * scale_factor;
+    let mut move_direction = Vec3::default();
+    let mut rotate_vector = Vec3::default();
 
-        transform.rotate_y(yaw.to_radians());
-        transform.rotate_local_x(pitch.to_radians());
+    if keys.pressed(KeyCode::W) {
+        move_direction += player_transform.forward();
     }
+
+    if keys.pressed(KeyCode::S) {
+        move_direction += player_transform.back();
+    }
+
+    if keys.pressed(KeyCode::A) {
+        move_direction += player_transform.left();
+    }
+
+    if keys.pressed(KeyCode::D) {
+        move_direction += player_transform.right();
+    }
+
+    if keys.pressed(KeyCode::Space) {
+        move_direction += player_transform.up();
+    }
+
+    if keys.pressed(KeyCode::C) {
+        move_direction += player_transform.down();
+    }
+
+    if keys.pressed(KeyCode::Q) {
+        rotate_vector += player_transform.back() * PHYSICS_TIMESTEP * 5.0;
+    }
+
+    if keys.pressed(KeyCode::E) {
+        rotate_vector += player_transform.forward() * PHYSICS_TIMESTEP * 5.0;
+    }
+
+    let scale_factor = window.height().min(window.width());
+
+    for motion in motion_reader.iter() {
+        rotate_vector += player_transform.left() * motion.delta.y * settings.first_person_sensitivity * scale_factor * PHYSICS_TIMESTEP * 12.5;
+        rotate_vector += player_transform.down() * motion.delta.x * settings.first_person_sensitivity * scale_factor * PHYSICS_TIMESTEP;
+    }
+
+    external_impulse.impulse = move_direction.normalize_or_zero() * PHYSICS_TIMESTEP * 50.0;
+    external_impulse.torque_impulse = rotate_vector;
 }
 
 fn cursor_lock(
@@ -114,7 +119,6 @@ impl Plugin for PlayerControllerPlugin {
         app.add_systems(FixedUpdate, (
             cursor_lock,
             player_movement,
-            player_rotation,
         ).in_set(FixedUpdateSet::Update));
     }
 }

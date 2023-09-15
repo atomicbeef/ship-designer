@@ -91,7 +91,7 @@ fn initial_state_setup(
                     .insert(RenderLayers::from_layers(&[1]))
                     .with_children(|parent| {
                         let id = parent.spawn(Camera3dBundle {
-                            transform: Transform::from_xyz(0.0, 1.8, 0.0),
+                            transform: Transform::from_xyz(0.0, 1.95, 0.0),
                             ..Default::default()
                         })
                             .insert(SelectionSource::new())
