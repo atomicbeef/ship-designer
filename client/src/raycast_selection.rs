@@ -1,7 +1,7 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_rapier3d::prelude::*;
 
-use crate::camera::ActiveCameraEntity;
+use crate::camera::ActiveCamera;
 
 #[derive(Component)]
 pub struct SelectionSource {
@@ -23,8 +23,7 @@ pub struct Selectable;
 
 pub fn update_intersections(
     primary_window_query: Query<&Window, With<PrimaryWindow>>,
-    active_camera: Res<ActiveCameraEntity>,
-    mut camera_query: Query<(&Camera, &GlobalTransform, &mut SelectionSource)>,
+    mut camera_query: Query<(&Camera, &GlobalTransform, &mut SelectionSource), With<ActiveCamera>>,
     rapier_context: Res<RapierContext>,
     selectable_query: Query<&Selectable>
 ) {
@@ -36,10 +35,7 @@ pub fn update_intersections(
         return;
     };
 
-    let Some(camera_entity) = active_camera.0 else {
-        return;
-    };
-    let Ok((camera, camera_transform, mut selection_source)) = camera_query.get_mut(camera_entity) else {
+    let Ok((camera, camera_transform, mut selection_source)) = camera_query.get_single_mut() else {
         return;
     };
 

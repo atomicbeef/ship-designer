@@ -9,20 +9,16 @@ use common::missile::{SpawnMissileRequest, SpawnMissileCommand, MissileBundle, E
 use packets::Packet; 
 use common::channels::Channel;
 
-use crate::camera::ActiveCameraEntity;
+use crate::camera::ActiveCamera;
 use crate::{connection_state::ConnectionState, fixed_input::FixedInput};
 
 fn request_spawn_missiles(
     keys: Res<FixedInput<KeyCode>>,
-    active_camera_entity: Res<ActiveCameraEntity>,
-    camera_query: Query<&GlobalTransform>,
+    camera_query: Query<&GlobalTransform, With<ActiveCamera>>,
     mut spawn_event_writer: EventWriter<SpawnMissileRequest>,
 ) {
     if keys.just_pressed(KeyCode::M) {
-        let Some(entity) = active_camera_entity.0 else {
-            return;
-        };
-        let Ok(camera_transform) = camera_query.get(entity) else {
+        let Ok(camera_transform) = camera_query.get_single() else {
             return;
         };
 

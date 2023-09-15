@@ -9,7 +9,7 @@ use common::player::{PlayerId, PlayerName, PlayerBundle};
 use common::part::{Parts, PartNetworkRepr, PartId};
 use common::ship::Ship;
 
-use crate::camera::ActiveCameraEntity;
+use crate::camera::ActiveCamera;
 use crate::part::spawn_part;
 use crate::building_material::BuildingMaterial;
 use crate::part::meshes::PartMeshHandles;
@@ -65,7 +65,7 @@ fn initial_state_setup(
     mut building_materials: ResMut<Assets<BuildingMaterial>>,
     mut initial_state_reader: EventReader<InitialState>,
     mut parts: ResMut<Parts>,
-    mut active_camera: ResMut<ActiveCameraEntity>,
+    active_camera_query: Query<Entity, With<ActiveCamera>>
 ) {
     for initial_state in initial_state_reader.iter() {
         for (id, name, transform) in initial_state.players.iter() {
@@ -85,19 +85,22 @@ fn initial_state_setup(
             }).id();
 
             if *id == initial_state.player_id {
+                if let Ok(previous_active_camera) = active_camera_query.get_single() {
+                    commands.entity(previous_active_camera).remove::<ActiveCamera>();
+                }
+
                 commands.entity(player)
                     .insert(ControlledPlayer)
                     // Make the controller player invisible to the first person camera
                     .insert(RenderLayers::from_layers(&[1]))
                     .with_children(|parent| {
-                        let id = parent.spawn(Camera3dBundle {
+                        parent.spawn(Camera3dBundle {
                             transform: Transform::from_xyz(0.0, 1.95, 0.0),
                             ..Default::default()
                         })
                             .insert(SelectionSource::new())
                             .insert(PlayerCamera)
-                            .id();
-                        active_camera.0 = Some(id);
+                            .insert(ActiveCamera);
                     });
             }
         }

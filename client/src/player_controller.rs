@@ -5,7 +5,7 @@ use bevy_rapier3d::prelude::*;
 use common::fixed_update::FixedUpdateSet;
 use common::PHYSICS_TIMESTEP;
 
-use crate::camera::ActiveCameraEntity;
+use crate::camera::ActiveCamera;
 use crate::fixed_input::{FixedInput, FixedMouseMotion};
 use crate::settings::Settings;
 
@@ -82,15 +82,11 @@ fn player_movement(
 
 fn cursor_lock(
     mut primary_window_query: Query<&mut Window, With<PrimaryWindow>>,
-    active_camera: Res<ActiveCameraEntity>,
-    player_camera_query: Query<(), With<PlayerCamera>>,
+    player_camera_query: Query<(), (With<PlayerCamera>, With<ActiveCamera>)>,
     keys: Res<FixedInput<KeyCode>>,
 ) {
     // Only manage the cursor if the active camera is a player camera
-    let Some(camera_entity) = active_camera.0 else {
-        return;
-    };
-    let Ok(_) = player_camera_query.get(camera_entity) else {
+    let Ok(_) = player_camera_query.get_single() else {
         return;
     };
 

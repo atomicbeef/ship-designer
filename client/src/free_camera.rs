@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use common::fixed_update::FixedUpdateSet;
 
-use crate::camera::ActiveCameraEntity;
+use crate::camera::ActiveCamera;
 use crate::fixed_input::{FixedInput, FixedMouseMotion};
 use crate::settings::Settings;
 
@@ -13,16 +13,9 @@ pub struct FreeCamera;
 fn camera_move(
     keys: Res<FixedInput<KeyCode>>,
     settings: Res<Settings>,
-    mut query: Query<(Entity, &mut Transform), With<FreeCamera>>,
-    active_camera: Res<ActiveCameraEntity>,
+    mut query: Query<&mut Transform, (With<ActiveCamera>, With<FreeCamera>)>,
 ) {
-    for (camera_entity, mut transform) in query.iter_mut() {
-        if let Some(entity) = active_camera.0 {
-            if entity != camera_entity {
-                continue;
-            }
-        }
-
+    for mut transform in query.iter_mut() {
         let mut velocity = Vec3::ZERO;
 
         for key in keys.get_pressed() {
@@ -47,18 +40,11 @@ fn camera_rotate(
     mut motion_evr: EventReader<FixedMouseMotion>,
     primary_window_query: Query<&Window, With<PrimaryWindow>>,
     settings: Res<Settings>,
-    mut camera_query: Query<(Entity, &mut Transform), With<FreeCamera>>,
-    active_camera: Res<ActiveCameraEntity>,
+    mut camera_query: Query<&mut Transform, (With<ActiveCamera>, With<FreeCamera>)>,
 ) {
     let primary_window = primary_window_query.get_single();
     if let Ok(window) = primary_window {
-        for (camera_entity, mut transform) in camera_query.iter_mut() {
-            if let Some(entity) = active_camera.0 {
-                if entity != camera_entity {
-                    continue;
-                }
-            }
-
+        for mut transform in camera_query.iter_mut() {
             for ev in motion_evr.iter() {
                 match window.cursor.grab_mode {
                     CursorGrabMode::None => {},
@@ -79,14 +65,10 @@ fn camera_rotate(
 fn cursor_grab(
     mouse_button_input: Res<FixedInput<MouseButton>>,
     mut primary_window_query: Query<&mut Window, With<PrimaryWindow>>,
-    active_camera: Res<ActiveCameraEntity>,
-    free_camera_query: Query<(), With<FreeCamera>>
+    free_camera_query: Query<(), (With<ActiveCamera>, With<FreeCamera>)>
 ) {
     // Only manage the cursor if the active camera is a free camera
-    let Some(camera_entity) = active_camera.0 else {
-        return;
-    };
-    let Ok(_) = free_camera_query.get(camera_entity) else {
+    let Ok(_) = free_camera_query.get_single() else {
         return;
     };
 

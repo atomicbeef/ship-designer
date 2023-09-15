@@ -4,7 +4,6 @@ use common::part::Parts;
 use common::predefined_parts::add_hardcoded_parts;
 use common::{part::PartPlugin, missile::MissilePlugin};
 
-use crate::camera::CameraPlugin;
 use crate::packet_handling::process_packets;
 use crate::part::meshes::PartMeshHandles;
 use crate::part::meshes::mesh_generation::generate_part_mesh;
@@ -41,7 +40,6 @@ impl SetupClientSpecific for App {
         self.insert_resource(settings::Settings::default())
             .add_plugins((
                 FixedInputPlugin,
-                CameraPlugin,
                 FreeCameraPlugin,
                 BuildingPlugin,
                 PlayerConnectionPlugin,
