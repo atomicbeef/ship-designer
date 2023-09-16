@@ -12,7 +12,7 @@ packets = { path = "../packets" }
 bevy_egui = "0.21"
 bevy-inspector-egui = "0.19"
 uflow = "0.7"
-num_enum = "0.6"
+num_enum = "0.7"
 bevy_rapier3d = { git = "https://github.com/dimforge/bevy_rapier.git", features = [ "debug-render-3d", "simd-stable" ] }
 
 [dependencies.bevy]

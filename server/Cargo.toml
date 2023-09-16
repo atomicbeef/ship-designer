@@ -10,7 +10,7 @@ common = { package = "ship-designer-common", path = "../common" }
 packets = { path = "../packets" }
 
 uflow = "0.7"
-num_enum = "0.6"
+num_enum = "0.7"
 bevy_rapier3d = { git = "https://github.com/dimforge/bevy_rapier.git", default-features = false, features = [ "simd-stable" ] }
 
 [dependencies.bevy]
