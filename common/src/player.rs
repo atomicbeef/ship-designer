@@ -52,7 +52,7 @@ impl Default for PlayerBundle {
             name: PlayerName::from("".to_string()),
             transform: TransformBundle::default(),
             visibility: VisibilityBundle::default(),
-            collider: Collider::capsule(Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, -1.0, 0.0), 0.5),
+            collider: Collider::capsule(Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, -1.0, 0.0), 0.75),
             rigid_body: RigidBody::Dynamic,
             locked_axes: LockedAxes::empty(),
             damping: Damping { linear_damping: 2.0, angular_damping: 4.0 },
