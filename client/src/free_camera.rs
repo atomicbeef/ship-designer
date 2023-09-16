@@ -1,7 +1,9 @@
 use bevy::ecs::event::EventReader;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
+
 use common::fixed_update::FixedUpdateSet;
+use common::PHYSICS_TIMESTEP;
 
 use crate::camera::ActiveCamera;
 use crate::fixed_input::{FixedInput, FixedMouseMotion};
@@ -32,7 +34,7 @@ fn camera_move(
 
         velocity = velocity.normalize_or_zero();
 
-        transform.translation += velocity * settings.camera_speed;
+        transform.translation += velocity * settings.camera_speed * PHYSICS_TIMESTEP;
     }
 }
 

@@ -14,7 +14,7 @@ impl Default for Settings {
         Self {
             first_person_sensitivity: 0.00025,
             free_camera_sensitivity: 0.00025,
-            camera_speed: 1.0,
+            camera_speed: 12.5,
             fullscreen: false,
             draw_camera_gizmo: false,
         }
