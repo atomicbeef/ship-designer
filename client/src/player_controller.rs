@@ -65,22 +65,22 @@ fn player_movement(
     }
 
     if keys.pressed(KeyCode::Q) {
-        rotate_vector += player_transform.back() * PHYSICS_TIMESTEP * 5.0;
+        rotate_vector += player_transform.back() * 5.0;
     }
 
     if keys.pressed(KeyCode::E) {
-        rotate_vector += player_transform.forward() * PHYSICS_TIMESTEP * 5.0;
+        rotate_vector += player_transform.forward() * 5.0;
     }
 
     let scale_factor = window.height().min(window.width());
 
     for motion in motion_reader.iter() {
-        rotate_vector += player_transform.left() * motion.delta.y * settings.first_person_sensitivity * scale_factor * PHYSICS_TIMESTEP * 12.5;
-        rotate_vector += player_transform.down() * motion.delta.x * settings.first_person_sensitivity * scale_factor * PHYSICS_TIMESTEP;
+        rotate_vector += player_transform.left() * motion.delta.y * settings.first_person_sensitivity * scale_factor * 12.5;
+        rotate_vector += player_transform.down() * motion.delta.x * settings.first_person_sensitivity * scale_factor;
     }
 
     external_impulse.impulse = move_direction.normalize_or_zero() * PHYSICS_TIMESTEP * 50.0;
-    external_impulse.torque_impulse = rotate_vector;
+    external_impulse.torque_impulse = rotate_vector * PHYSICS_TIMESTEP;
 }
 
 fn cursor_lock(
