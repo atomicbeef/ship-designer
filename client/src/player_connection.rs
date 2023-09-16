@@ -106,7 +106,7 @@ fn initial_state_setup(
             }
         }
 
-        let construct = commands.spawn(RigidBody::Fixed)
+        let construct = commands.spawn(RigidBody::Dynamic)
             .insert(VisibilityBundle::default())
             .insert(TransformBundle::from_transform(Transform::from(initial_state.construct_transform)))
             .insert(Velocity::default())
