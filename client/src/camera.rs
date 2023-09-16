@@ -50,18 +50,12 @@ fn draw_cameras(
     mut gizmos: Gizmos,
     settings: Res<Settings>,
 ) {
-    if !settings.draw_camera_gizmo {
+    if !settings.draw_debug {
         return;
     }
 
     for camera_transform in camera_transform_query.iter() {
         gizmos.sphere(camera_transform.translation(), Quat::IDENTITY, 0.2, Color::GREEN);
-    }
-}
-
-fn toggle_debug_draw(input: Res<Input<KeyCode>>, mut settings: ResMut<Settings>) {
-    if input.just_pressed(KeyCode::F3) {
-        settings.draw_camera_gizmo = !settings.draw_camera_gizmo;
     }
 }
 
@@ -81,7 +75,6 @@ impl Plugin for CameraDebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, (
             draw_cameras,
-            toggle_debug_draw,
         ));
     }
 }

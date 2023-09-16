@@ -5,6 +5,7 @@ use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use ship_designer_client::camera::CameraDebugPlugin;
+use ship_designer_client::settings::Settings;
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
@@ -54,6 +55,7 @@ fn main() {
         .add_systems(Update, (
             disconnect_on_esc,
             disconnect_on_window_close,
+            toggle_debug_draw,
         ))
         .add_plugins(CameraDebugPlugin)
         .add_plugins(WorldInspectorPlugin::new())
@@ -118,5 +120,16 @@ fn disconnect_on_window_close(
 ) {
     if !window_closed.is_empty() {
         connection_state.client.disconnect();
+    }
+}
+
+fn toggle_debug_draw(
+    input: Res<Input<KeyCode>>,
+    mut settings: ResMut<Settings>,
+    mut rapier_debug_render_context: ResMut<DebugRenderContext>,
+) {
+    if input.just_pressed(KeyCode::F3) {
+        settings.draw_debug = !settings.draw_debug;
+        rapier_debug_render_context.enabled = settings.draw_debug;
     }
 }

@@ -6,7 +6,7 @@ pub struct Settings {
     pub free_camera_sensitivity: f32,
     pub camera_speed: f32,
     pub fullscreen: bool,
-    pub draw_camera_gizmo: bool,
+    pub draw_debug: bool,
 }
 
 impl Default for Settings {
@@ -16,7 +16,7 @@ impl Default for Settings {
             free_camera_sensitivity: 0.00025,
             camera_speed: 12.5,
             fullscreen: false,
-            draw_camera_gizmo: false,
+            draw_debug: true,
         }
     }
 }
