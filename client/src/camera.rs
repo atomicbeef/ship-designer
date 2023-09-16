@@ -1,12 +1,14 @@
 use bevy::prelude::*;
 
+use crate::player_controller::ActivelyControlled;
+
 #[derive(Component)]
 pub struct ActiveCamera;
 
 fn cycle_cameras(
     input: Res<Input<KeyCode>>,
-    active_camera_query: Query<Entity, With<ActiveCamera>>,
-    mut camera_query: Query<(Entity, &mut Camera)>,
+    mut active_camera_query: Query<(Entity, Option<&Parent>), With<ActiveCamera>>,
+    mut camera_query: Query<(Entity, Option<&Parent>, &mut Camera)>,
     mut commands: Commands,
 ) {
     if input.just_pressed(KeyCode::F1) {
@@ -14,22 +16,30 @@ fn cycle_cameras(
             return;
         }
 
-        if let Ok(active_camera) = active_camera_query.get_single() {
+        if let Ok((active_camera, potential_player)) = active_camera_query.get_single_mut() {
             // Deactivate old active camera
             commands.entity(active_camera).remove::<ActiveCamera>();
-            if let Ok((_, mut camera)) = camera_query.get_mut(active_camera) {
+            if let Ok((_, _, mut camera)) = camera_query.get_mut(active_camera) {
                 camera.is_active = false;
             }
+            
+            if let Some(player) = potential_player {
+                commands.entity(player.get()).remove::<ActivelyControlled>();
+            }
 
-            let (new_active_camera, mut camera) = match camera_query.iter_mut()
-                .skip_while(|&(entity, _)| entity == active_camera)
+            let (new_active_camera, new_potential_player, mut camera) = match camera_query.iter_mut()
+                .skip_while(|&(entity, _, _)| entity == active_camera)
                 .next() {
-                    Some((entity, camera)) => (entity, camera),
+                    Some((entity, maybe_player, camera)) => (entity, maybe_player, camera),
                     None => camera_query.iter_mut().next().unwrap(),
                 };
             
             commands.entity(new_active_camera).insert(ActiveCamera);
             camera.is_active = true;
+
+            if let Some(player) = new_potential_player {
+                commands.entity(player.get()).insert(ActivelyControlled);
+            }
         }
     }
 }

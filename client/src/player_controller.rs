@@ -10,14 +10,17 @@ use crate::fixed_input::{FixedInput, FixedMouseMotion};
 use crate::settings::Settings;
 
 #[derive(Component)]
-pub struct ControlledPlayer;
+pub struct LocalPlayer;
+
+#[derive(Component)]
+pub struct ActivelyControlled;
 
 #[derive(Component)]
 pub struct PlayerCamera;
 
 fn player_movement(
     keys: Res<FixedInput<KeyCode>>,
-    mut player_data_query: Query<(&mut ExternalImpulse, &Transform), With<ControlledPlayer>>,
+    mut player_data_query: Query<(&mut ExternalImpulse, &Transform), (With<LocalPlayer>, With<ActivelyControlled>)>,
     mut motion_reader: EventReader<FixedMouseMotion>,
     primary_window_query: Query<&Window, With<PrimaryWindow>>,
     settings: Res<Settings>,

@@ -13,7 +13,7 @@ use crate::camera::ActiveCamera;
 use crate::part::spawn_part;
 use crate::building_material::BuildingMaterial;
 use crate::part::meshes::PartMeshHandles;
-use crate::player_controller::{ControlledPlayer, PlayerCamera};
+use crate::player_controller::{LocalPlayer, PlayerCamera, ActivelyControlled};
 use crate::raycast_selection::SelectionSource;
 
 fn player_connected(
@@ -90,7 +90,8 @@ fn initial_state_setup(
                 }
 
                 commands.entity(player)
-                    .insert(ControlledPlayer)
+                    .insert(LocalPlayer)
+                    .insert(ActivelyControlled)
                     // Make the controller player invisible to the first person camera
                     .insert(RenderLayers::from_layers(&[1]))
                     .with_children(|parent| {
@@ -105,7 +106,7 @@ fn initial_state_setup(
             }
         }
 
-        let construct = commands.spawn(RigidBody::Dynamic)
+        let construct = commands.spawn(RigidBody::Fixed)
             .insert(VisibilityBundle::default())
             .insert(TransformBundle::from_transform(Transform::from(initial_state.construct_transform)))
             .insert(Velocity::default())
