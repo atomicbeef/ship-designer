@@ -4,6 +4,7 @@ use bevy::render::view::RenderLayers;
 use bevy::window::{WindowClosed, PrimaryWindow};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
+use ship_designer_client::camera::CameraDebugPlugin;
 use uflow::client::Client;
 use uflow::EndpointConfig;
 
@@ -50,8 +51,11 @@ fn main() {
             set_window_title,
             setup.after(setup_hardcoded_parts)
         ))
-        .add_systems(Update, disconnect_on_esc)
-        .add_systems(Update, disconnect_on_window_close)
+        .add_systems(Update, (
+            disconnect_on_esc,
+            disconnect_on_window_close,
+        ))
+        .add_plugins(CameraDebugPlugin)
         .add_plugins(WorldInspectorPlugin::new())
         .insert_resource(connection_state)
         .add_systems(FixedUpdate,

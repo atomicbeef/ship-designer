@@ -71,6 +71,15 @@ impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, (
             cycle_cameras,
+        ));
+    }
+}
+
+pub struct CameraDebugPlugin;
+
+impl Plugin for CameraDebugPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (
             draw_cameras,
             toggle_debug_draw,
         ));
